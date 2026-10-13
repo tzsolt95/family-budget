@@ -45,7 +45,7 @@
       <div id="tx-list"></div>
       <p id="empty-state" class="empty" hidden>
         Ebben a hónapban még nincs tétel.<br>
-        Tölts fel egy CIB kivonatot az <a href="#import">Importálás</a> fülön,
+        Tölts fel egy bankszámlakivonatot az <a href="#import">Importálás</a> fülön,
         vagy adj hozzá egyet a <strong>+</strong> gombbal.
       </p>
       <button type="button" id="add-btn" class="fab" aria-label="Új tétel">+</button>
@@ -97,8 +97,9 @@
     <!-- Importálás -->
     <section id="view-import" class="view" aria-label="Importálás" hidden>
       <div class="card">
-        <h2>CIB bankszámlakivonat</h2>
-        <p class="muted">Válaszd ki a PDF kivonatot. Egyszerre többet is választhatsz. A már feltöltött tételeket az app nem veszi fel még egyszer.</p>
+        <h2>Bankszámlakivonat (PDF)</h2>
+        <p class="muted">Válaszd ki a PDF kivonatot. Egyszerre többet is választhatsz. A bankot az app magától felismeri, és a már feltöltött tételeket nem veszi fel még egyszer.</p>
+        <p class="muted small">Támogatott bankok: <span id="supported-banks">–</span></p>
         <label class="btn primary">
           PDF kiválasztása
           <input type="file" id="pdf-input" accept="application/pdf,.pdf" multiple hidden>

@@ -4,6 +4,7 @@ import * as store from './store.js';
 import { KINDS, categoryById, categoriesForKind, isTransferKind, suggestForName, suggestItemCategory } from './categories.js';
 import { parseReceipt, parsePrice } from './receipt-parser.js';
 import { recentMonths } from './report.js';
+import { supportedBanks } from './banks/index.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -719,21 +720,21 @@ async function importPdfFiles(files) {
     box.textContent = `${file.name}: beolvasás…`;
     results.append(box);
     try {
-      const [{ extractRows }, { parseCibStatement }, pdfjsLib] = await Promise.all([
+      const [{ extractRows }, { parseStatement }, pdfjsLib] = await Promise.all([
         import('./pdf-text.js'),
-        import('./cib-parser.js'),
+        import('./banks/index.js'),
         loadPdfJs(),
       ]);
       const pages = await extractRows(pdfjsLib, new Uint8Array(await file.arrayBuffer()));
-      const { meta, transactions, check } = parseCibStatement(pages);
+      const { bank, meta, transactions, check } = parseStatement(pages);
       if (transactions.length === 0) throw new Error(check.problems[0] ?? 'Nem található tranzakció.');
 
       const { added, skipped, linked, saved } = store.addBankTransactions(transactions, {
-        file: file.name, periodFrom: meta.periodFrom, periodTo: meta.periodTo, ok: check.ok,
+        file: file.name, bank, periodFrom: meta.periodFrom, periodTo: meta.periodTo, ok: check.ok,
       });
       if (!saved) throw new Error('Nem sikerült menteni: megtelt a tárhely.');
       lastMonth = transactions.at(-1).date.slice(0, 7);
-      renderResult(box, file.name, meta, check, added, skipped, linked);
+      renderResult(box, file.name, bank, meta, check, added, skipped, linked);
     } catch (err) {
       box.className = 'result warn';
       box.textContent = `${file.name}: ${err.message || 'Hiba a beolvasás közben.'}`;
@@ -743,12 +744,13 @@ async function importPdfFiles(files) {
   renderHistory();
 }
 
-function renderResult(box, name, meta, check, added, skipped, linked) {
+function renderResult(box, name, bank, meta, check, added, skipped, linked) {
   box.className = `result ${check.ok ? 'ok' : 'warn'}`;
   const period = meta.periodFrom ? `${meta.periodFrom.replaceAll('-', '.')} – ${meta.periodTo.replaceAll('-', '.')}` : '';
   const strong = document.createElement('strong');
   strong.textContent = name;
   const lines = [
+    `Bank: ${bank}`,
     period && `Időszak: ${period}`,
     `Új tétel: ${added}${skipped ? `, már meglévő (kihagyva): ${skipped}` : ''}`,
     linked && `🔗 Kézzel felvett tételből megtalálva: ${linked}`,
@@ -794,7 +796,7 @@ function renderHistory() {
   list.replaceChildren(...items.map((imp) => {
     const li = document.createElement('li');
     const when = dateFmt.format(new Date(imp.importedAt));
-    li.textContent = `${when}: ${imp.periodFrom ?? '?'} – ${imp.periodTo ?? '?'} (${imp.added} új / ${imp.count})${imp.ok ? '' : ' ⚠️'}`;
+    li.textContent = `${when}: ${imp.bank ?? 'CIB Bank'}, ${imp.periodFrom ?? '?'} – ${imp.periodTo ?? '?'} (${imp.added} új / ${imp.count})${imp.ok ? '' : ' ⚠️'}`;
     return li;
   }));
   if (items.length === 0) {
@@ -940,5 +942,6 @@ if ('serviceWorker' in navigator && window.isSecureContext) {
 }
 navigator.storage?.persist?.().catch(() => {});
 
+$('#supported-banks').textContent = supportedBanks();
 store.ensureRecurring(todayIso());
 showView();

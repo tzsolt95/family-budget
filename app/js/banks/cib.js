@@ -1,5 +1,15 @@
-// Parser for CIB Bank "BANKSZÁMLA KIVONAT" PDF statements.
+// Reader for CIB Bank "BANKSZÁMLA KIVONAT" PDF statements.
 // Input: rows from extractRows(). Output: statement meta, transactions and a self-check.
+// Registered in ./index.js, which describes what every bank reader must provide.
+
+export const id = 'cib';
+export const name = 'CIB Bank';
+
+// True when the PDF is a CIB statement.
+export function detect(pages) {
+  const firstPage = (pages[0] ?? []).map(rowText).join('\n');
+  return /BANKSZÁMLA KIVONAT/.test(firstPage) && /CIB24|CIB Bank/.test(firstPage);
+}
 
 const DATE_RE = /^(\d{4})\.(\d{2})\.(\d{2})\.?$/;
 const AMOUNT_RE = /^-?\s?\d{1,3}(\.\d{3})*,\d{2}$/;
@@ -40,7 +50,7 @@ function cleanMerchant(raw) {
   return tokens.join(' ');
 }
 
-export function isOwnAccountTransfer(type) {
+function isOwnAccountTransfer(type) {
   return /^Saját (számlák|sz\.) közti/i.test(type);
 }
 
@@ -118,10 +128,21 @@ function interpret(raw) {
     }
   }
 
+  tx.hint = hintFor(tx);
   tx.date = tx.purchaseDate ?? tx.bookingDate;
   tx.title = friendlyTitle(tx) || tx.merchant || tx.partner || tx.type;
   tx.id = `cib|${tx.bookingDate}|${tx.ref}|${tx.amount}`;
   return tx;
+}
+
+// Bank-neutral meaning of CIB's wording, used by the category rules.
+function hintFor(tx) {
+  if (isOwnAccountTransfer(tx.type)) return 'own_transfer';
+  if (/TŐKETÖRLESZTÉS|^KAMAT TERHELÉSE/i.test(tx.type)) return 'loan';
+  if (/^BANKKÁRTYA JÓVÁÍRÁS/i.test(tx.type)) return 'refund';
+  if (/^Elszámolt kamat/i.test(tx.type)) return 'interest';
+  if (/KÉSZPÉNZ ?FELV/i.test(tx.type) || tx.mcc === '6011') return 'cash_withdrawal';
+  return undefined;
 }
 
 function friendlyTitle(tx) {
@@ -133,7 +154,7 @@ function friendlyTitle(tx) {
   return null;
 }
 
-export function parseCibStatement(pages) {
+export function parse(pages) {
   const meta = {};
   const rawTxs = [];
   let current = null;

@@ -196,7 +196,8 @@ Nem kell otthoni szerver, és nem kell az App Store sem.
 |---|---|
 | `app/` | Maga az app: ez kerül fel a telefonra / a tárhelyre |
 | `app/index.html`, `app/styles.css` | A képernyők és a kinézet |
-| `app/js/cib-parser.js` | A CIB PDF kivonat beolvasása és ellenőrzése |
+| `app/js/banks/index.js` | **A támogatott bankok listája**; a feltöltött PDF-ből felismeri a bankot |
+| `app/js/banks/cib.js` | A CIB PDF kivonat beolvasása és ellenőrzése |
 | `app/js/categories.js` | Kategóriák és a besorolási szabályok (bankkivonat és blokk-tételek) |
 | `app/js/report.js` | A hó végi kimutatás számításai (összesítők, kategóriák, hónapok) |
 | `app/js/receipt-parser.js` | A blokk szövegének beolvasása (bolt, dátum, tételek, végösszeg) |
@@ -205,6 +206,12 @@ Nem kell otthoni szerver, és nem kell az App Store sem.
 | `app/vendor/pdfjs/` | Ingyenes PDF-olvasó könyvtár (pdf.js) |
 | `tools/check-statement.mjs` | Fejlesztői ellenőrzés: beolvas egy kivonatot, és megnézi, egyeznek-e az összegek |
 | `tools/test-receipts.mjs` | Fejlesztői ellenőrzés a minta-blokkokkal (`node tools/test-receipts.mjs`) |
+
+### Új bank hozzáadása (pl. később Revolut)
+1. Kell egy minta-kivonat az adott banktól (PDF).
+2. Claude készít egy új fájlt: `app/js/banks/<bank>.js` (a `cib.js` mintájára).
+3. A bankot fel kell venni a listába az `app/js/banks/index.js` fájlban.
+Mást nem kell módosítani: a feltöltés, a kategóriák, a párosítás és a kimutatás automatikusan működik.
 
 ### Indítás tesztelésre (Mac + iPhone, ugyanazon a Wi-Fi-n)
 1. Terminálban, ebben a mappában: `npm start`
@@ -237,6 +244,8 @@ címre. Átköltözéskor használd a „Biztonsági mentés letöltése” és 
   hibátlanul beolvasva, az egyenlegek centre egyeznek.
 - **2026. 10. 12. – kiegészítés:** kártyák neve (ki fizetett), Revolut feltöltés címke,
   automatikus megtakarítások napi összevonása (szeptemberben 209 sor helyett 153).
+- **2026. 10. 13. – „PDF import” átnevezés:** az Importálás fülön „Bankszámlakivonat (PDF)”;
+  az app magától felismeri a bankot (jelenleg: CIB), új bank egy új fájllal hozzáadható.
 - **2026. 10. 13. – 5. lépés kész:** „Kimutatás” fül: összesítő kártyák az előző hónaphoz mérve,
   kiadások kategóriánként (blokkok tételenként), bevétel/kiadás hónaponként táblázattal,
   külön megtakarítás szakasz.

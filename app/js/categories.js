@@ -1,6 +1,5 @@
 // Categories and the rules that suggest a category for a bank transaction.
-
-import { isOwnAccountTransfer } from './cib-parser.js';
+// Bank readers (banks/*.js) pass a bank-neutral `hint`, so these rules work for every bank.
 
 export const KINDS = {
   expense: 'Kiadás',
@@ -77,10 +76,10 @@ const MCC = new Map(MCC_RANGES.flatMap(([cat, codes]) => codes.map((code) => [St
 
 // ATM withdrawals are not spending: the cash is spent later and entered by hand.
 const isCashWithdrawal = (tx) => tx.amount < 0
-  && (tx.mcc === '6011' || /KÉSZPÉNZ ?FELV|KESZPENZ ?FELV|\bATM\b/i.test(`${tx.type ?? ''} ${tx.merchant ?? ''}`));
+  && (tx.hint === 'cash_withdrawal' || tx.mcc === '6011' || /\bATM\b/i.test(tx.merchant ?? ''));
 
 export function kindOf(tx) {
-  if (isOwnAccountTransfer(tx.type ?? '')) return tx.amount < 0 ? 'saving' : 'saving_withdrawal';
+  if (tx.hint === 'own_transfer') return tx.amount < 0 ? 'saving' : 'saving_withdrawal';
   if (isCashWithdrawal(tx)) return 'cash';
   return tx.amount < 0 ? 'expense' : 'income';
 }
@@ -97,12 +96,12 @@ export function suggestCategory(tx) {
 
   if (kind === 'income') {
     if (/MUNKABÉR|MUNKABER|BÉR|FIZETÉS/i.test(text)) return 'salary';
-    if (/KÁRTYA JÓVÁÍRÁS/i.test(tx.type ?? '')) return 'refund';
-    if (/kamat/i.test(tx.type ?? '')) return 'interest';
+    if (tx.hint === 'refund') return 'refund';
+    if (tx.hint === 'interest') return 'interest';
     return 'other_income';
   }
 
-  if (/TŐKETÖRLESZTÉS|KAMAT TERHELÉS/i.test(tx.type ?? '')) return 'loan';
+  if (tx.hint === 'loan') return 'loan';
   for (const [cat, re] of KEYWORDS) if (re.test(text)) return cat;
   if (tx.mcc && MCC.has(tx.mcc)) return MCC.get(tx.mcc);
   return 'other';
