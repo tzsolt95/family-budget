@@ -253,6 +253,8 @@ címre. Átköltözéskor használd a „Biztonsági mentés letöltése” és 
   hibátlanul beolvasva, az egyenlegek centre egyeznek.
 - **2026. 10. 12. – kiegészítés:** kártyák neve (ki fizetett), Revolut feltöltés címke,
   automatikus megtakarítások napi összevonása (szeptemberben 209 sor helyett 153).
+- **2026. 10. 13. – Kártyák:** kártya hozzáadása kézzel (utolsó 4 számjegy + név), kézzel felvett kártya törlése;
+  a Kártyák rész akkor is látszik, ha még nincs kártya.
 - **2026. 10. 13. – Baba kategória:** új 👶 Baba kategória (boltok, blokk-tételek, kártyakód),
   kivételekkel; induláskor a régebbi automatikus besorolások is frissülnek.
 - **2026. 10. 13. – „PDF import” átnevezés:** az Importálás fülön „Bankszámlakivonat (PDF)”;
@@ -279,6 +281,9 @@ címre. Átköltözéskor használd a „Biztonsági mentés letöltése” és 
 - [x] Tárhely: **GitHub Pages**, nyilvános tárolóval (repo). *(döntés: 2026. 10. 13.)*
 - [x] Két kártya van a számlán: az egyik Zsolté, a másik a feleségéé. A neveket az appban,
   az Importálás fülön a **Kártyák** résznél kell beírni (a kártyaszámok szándékosan nincsenek a kódban).
+  A **Kártyák** lista a feltöltött kivonatokból töltődik fel, vagy **kézzel** bővíthető
+  („+ Kártya hozzáadása kézzel”: utolsó 4 számjegy + név); a kézzel felvett kártya törölhető.
+  Minden kártyaadat **csak a telefonon** tárolódik (ellenőrizve: a nyilvános kódban és a weboldalon nincs kártyaszám).
 - [x] A Revolut feltöltés **kiadásnak** számít („Revolut feltöltés”, Egyéb kategória).
   Később jöhet a Revolut kivonatok importálása is, de egyelőre csak CIB.
 - [x] Az apró automatikus megtakarítások naponta **egy sorba** vannak összevonva

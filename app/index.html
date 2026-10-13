@@ -107,10 +107,27 @@
         <div id="import-results"></div>
       </div>
 
-      <div class="card" id="cards-card" hidden>
+      <div class="card" id="cards-card">
         <h2>Kártyák</h2>
-        <p class="muted">Írd be, kié melyik kártya. Így a listában a név látszik a kártyaszám helyett.</p>
+        <p class="muted">Írd be, kié melyik kártya. Így a listában a név látszik a kártyaszám helyett.
+          A kártyák a feltöltött kivonatokból kerülnek ide, vagy kézzel adhatod hozzá őket.
+          Csak az utolsó 4 számjegy látszik, és csak ezen a telefonon tárolódik.</p>
         <div id="card-list"></div>
+        <p id="card-empty" class="muted small" hidden>Még nincs kártya. Tölts fel egy kivonatot, vagy add hozzá kézzel.</p>
+        <details class="card-add" id="card-add">
+          <summary>+ Kártya hozzáadása kézzel</summary>
+          <div class="row-2">
+            <label class="field">
+              Utolsó 4 számjegy
+              <input type="text" id="card-add-digits" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="pl. 1234">
+            </label>
+            <label class="field">
+              Kié?
+              <input type="text" id="card-add-owner" autocomplete="off" placeholder="pl. Zsolt">
+            </label>
+          </div>
+          <button type="button" id="card-add-btn" class="btn">Hozzáadás</button>
+        </details>
       </div>
 
       <div class="card">

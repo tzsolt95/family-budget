@@ -770,11 +770,13 @@ function renderResult(box, name, bank, meta, check, added, skipped, linked) {
 
 function renderCards() {
   const cards = store.knownCards();
-  $('#cards-card').hidden = cards.length === 0;
-  $('#card-list').replaceChildren(...cards.map(({ last4, owner }) => {
+  $('#card-empty').hidden = cards.length > 0;
+  $('#card-list').replaceChildren(...cards.map(({ last4, owner, fromStatement }) => {
+    const row = document.createElement('div');
+    row.className = 'card-row';
     const label = document.createElement('label');
     label.className = 'field card-field';
-    label.textContent = `Kártya ••${last4}`;
+    label.textContent = `Kártya ••${last4}${fromStatement ? '' : ' (kézzel hozzáadva)'}`;
     const input = document.createElement('input');
     input.type = 'text';
     input.value = owner;
@@ -785,8 +787,37 @@ function renderCards() {
       toast('Kártya neve mentve');
     });
     label.append(input);
-    return label;
+    row.append(label);
+    if (!fromStatement) {
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'item-del';
+      del.setAttribute('aria-label', `A ••${last4} kártya törlése`);
+      del.textContent = '✕';
+      del.addEventListener('click', () => {
+        if (!confirm(`Törlöd a ••${last4} kártyát a listából?`)) return;
+        store.removeCard(last4);
+        renderCards();
+      });
+      row.append(del);
+    }
+    return row;
   }));
+}
+
+function addCardByHand() {
+  const digits = $('#card-add-digits');
+  const owner = $('#card-add-owner');
+  try {
+    store.addCard(digits.value.trim(), owner.value);
+    digits.value = '';
+    owner.value = '';
+    $('#card-add').open = false;
+    toast('Kártya hozzáadva');
+    renderCards();
+  } catch (err) {
+    toast(err.message);
+  }
 }
 
 function renderHistory() {
@@ -924,6 +955,7 @@ $('#pdf-input').addEventListener('change', async (e) => {
   if (files.length) await importPdfFiles(files);
 });
 $('#backup-btn').addEventListener('click', downloadBackup);
+$('#card-add-btn').addEventListener('click', addCardByHand);
 $('#restore-input').addEventListener('change', async (e) => {
   const [file] = e.target.files;
   e.target.value = '';

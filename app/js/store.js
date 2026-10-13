@@ -6,7 +6,7 @@ import { hintFor as cibHint } from './banks/cib.js';
 const KEY = 'csaladi-kassza.v1';
 
 function emptyState() {
-  return { version: 1, transactions: {}, rules: {}, imports: [], cardOwners: {}, recurring: {}, itemRules: {} };
+  return { version: 1, transactions: {}, rules: {}, imports: [], cardOwners: {}, manualCards: [], recurring: {}, itemRules: {} };
 }
 
 let state = load();
@@ -83,10 +83,32 @@ export const countedTransactions = () => allTransactions().filter((t) => !t.link
 
 // ---------- Card owners ----------
 
-// Card owners are typed in by the user on the phone, so card digits never live in the code.
+// Cards come from uploaded statements, or are added by hand. Both live only on this
+// phone (local storage), so card digits never get into the public code.
 export function knownCards() {
-  const cards = new Set(allTransactions().map((t) => t.cardLast4).filter(Boolean));
-  return [...cards].sort().map((last4) => ({ last4, owner: state.cardOwners[last4] ?? '' }));
+  const fromStatements = new Set(allTransactions().map((t) => t.cardLast4).filter(Boolean));
+  const all = new Set([...fromStatements, ...state.manualCards]);
+  return [...all].sort().map((last4) => ({
+    last4,
+    owner: state.cardOwners[last4] ?? '',
+    fromStatement: fromStatements.has(last4),
+  }));
+}
+
+export function addCard(last4, owner) {
+  if (!/^\d{4}$/.test(last4)) throw new Error('A kártyaszám utolsó 4 számjegyét add meg.');
+  if (knownCards().some((c) => c.last4 === last4)) throw new Error(`A ••${last4} kártya már szerepel a listában.`);
+  state.manualCards.push(last4);
+  if (owner.trim()) state.cardOwners[last4] = owner.trim();
+  save();
+}
+
+// Removes a hand-added card. A card seen on a statement stays (its payments use it),
+// only its name can be cleared.
+export function removeCard(last4) {
+  state.manualCards = state.manualCards.filter((c) => c !== last4);
+  if (!allTransactions().some((t) => t.cardLast4 === last4)) delete state.cardOwners[last4];
+  save();
 }
 
 export function setCardOwner(last4, owner) {
@@ -389,6 +411,7 @@ export function restoreBackup(text) {
     rules: data.rules ?? {},
     imports: data.imports ?? [],
     cardOwners: data.cardOwners ?? {},
+    manualCards: data.manualCards ?? [],
     recurring: data.recurring ?? {},
     itemRules: data.itemRules ?? {},
   };

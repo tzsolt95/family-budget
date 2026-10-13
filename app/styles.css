@@ -327,3 +327,10 @@ dialog h2 { margin-bottom: 4px; overflow-wrap: anywhere; }
 .table-view th, .table-view td { padding: 6px 4px; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; }
 .table-view th:first-child, .table-view td:first-child { text-align: left; }
 .table-view th { color: var(--muted); font-weight: 500; }
+
+/* Cards on the Importálás tab */
+.card-row { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 6px; }
+.card-row .item-del { height: 44px; }
+.card-add { margin-top: 12px; }
+.card-add summary { color: var(--accent); cursor: pointer; font-size: 0.95rem; }
+.card-add .row-2 { margin-top: 10px; }
