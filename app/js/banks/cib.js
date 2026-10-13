@@ -128,7 +128,7 @@ function interpret(raw) {
     }
   }
 
-  tx.hint = hintFor(tx);
+  tx.hint = hintFor(tx) ?? null;
   tx.date = tx.purchaseDate ?? tx.bookingDate;
   tx.title = friendlyTitle(tx) || tx.merchant || tx.partner || tx.type;
   tx.id = `cib|${tx.bookingDate}|${tx.ref}|${tx.amount}`;
@@ -136,7 +136,7 @@ function interpret(raw) {
 }
 
 // Bank-neutral meaning of CIB's wording, used by the category rules.
-function hintFor(tx) {
+export function hintFor(tx) {
   if (isOwnAccountTransfer(tx.type)) return 'own_transfer';
   if (/TŐKETÖRLESZTÉS|^KAMAT TERHELÉSE/i.test(tx.type)) return 'loan';
   if (/^BANKKÁRTYA JÓVÁÍRÁS/i.test(tx.type)) return 'refund';

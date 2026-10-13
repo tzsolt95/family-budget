@@ -1,6 +1,7 @@
 // Keeps all data in the phone's local storage (phase 1: no cloud).
 
 import { kindOf, suggestCategory, setUserRules, ruleKey, setItemRules, itemRuleKey } from './categories.js';
+import { hintFor as cibHint } from './banks/cib.js';
 
 const KEY = 'csaladi-kassza.v1';
 
@@ -10,6 +11,7 @@ function emptyState() {
 
 let state = load();
 applyRules();
+upgradeStoredData();
 
 function applyRules() {
   setUserRules(state.rules);
@@ -32,6 +34,28 @@ function save() {
   } catch {
     return false;
   }
+}
+
+// Runs when the app opens: brings data saved by older app versions up to date.
+// - CIB lines imported before bank hints existed get their hint.
+// - Automatically sorted bank lines are sorted again, so new rules (e.g. the Baba
+//   category) also apply to earlier months. Anything the user sorted is left alone.
+function upgradeStoredData() {
+  let changed = false;
+  for (const tx of Object.values(state.transactions)) {
+    if (tx.source !== 'bank') continue;
+    if (!('hint' in tx) && tx.id.startsWith('cib|')) {
+      tx.hint = cibHint(tx) ?? null;
+      changed = true;
+    }
+    if (tx.categorySource !== 'auto') continue;
+    const category = suggestCategory(tx);
+    if (category !== tx.category) {
+      tx.category = category;
+      changed = true;
+    }
+  }
+  if (changed) save();
 }
 
 const newId = (prefix) => `${prefix}|${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;

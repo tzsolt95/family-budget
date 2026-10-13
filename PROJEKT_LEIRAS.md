@@ -58,7 +58,7 @@ Az app három forrásból gyűjti össze a pénzmozgásokat, és **semmit nem sz
 
 ## 4. Kategóriák
 
-**Kiadások:** Élelmiszer, Háztartás, Rezsi, Étterem/rendelés, Szórakozás, Közlekedés,
+**Kiadások:** Élelmiszer, Háztartás, **Baba**, Rezsi, Étterem/rendelés, Szórakozás, Közlekedés,
 Előfizetések, Egészség, Ruházat, Hitel, Biztosítás, Egyéb
 
 **Bevételek:** Fizetés, Visszatérítés, Kamat, Egyéb bevétel
@@ -68,6 +68,15 @@ Előfizetések, Egészség, Ruházat, Hitel, Biztosítás, Egyéb
 A **Rezsi, Étterem/rendelés, Hitel és Biztosítás** kategória a valódi szeptemberi
 kivonatok alapján került be (az eredeti 8-as listához képest), mert ezek gyakori,
 nagy tételek voltak.
+
+A **👶 Baba** kategória (2026. 10. 13.) ide kerül automatikusan:
+- **banki tételek:** pelenka.hu, Brendon, bababoltok, és a gyerek-/babaruha boltok kártyakódja (MCC 5641);
+- **blokk tételek:** Pampers, Huggies, Libero, Babydream, Babylove, pelenka, tápszer, HiPP, Aptamil,
+  bébiétel, cumi, popsikrém, „baba”/„bébi” szavak stb.
+- **Kivételek** (Élelmiszer marad): babapiskóta, bébispenót, bébirépa, babakukorica, Babybel.
+
+Ha egy szabály változik, az app induláskor **újra besorolja az automatikusan besorolt** banki tételeket
+(a korábbi hónapokban is). Amit kézzel átsoroltál, azt soha nem írja felül.
 
 ### Hogyan kap egy tétel kategóriát?
 1. Ha korábban kézzel átsoroltál egy boltot, és bepipáltad, hogy „mindig ezt használd”, akkor azt.
@@ -244,6 +253,8 @@ címre. Átköltözéskor használd a „Biztonsági mentés letöltése” és 
   hibátlanul beolvasva, az egyenlegek centre egyeznek.
 - **2026. 10. 12. – kiegészítés:** kártyák neve (ki fizetett), Revolut feltöltés címke,
   automatikus megtakarítások napi összevonása (szeptemberben 209 sor helyett 153).
+- **2026. 10. 13. – Baba kategória:** új 👶 Baba kategória (boltok, blokk-tételek, kártyakód),
+  kivételekkel; induláskor a régebbi automatikus besorolások is frissülnek.
 - **2026. 10. 13. – „PDF import” átnevezés:** az Importálás fülön „Bankszámlakivonat (PDF)”;
   az app magától felismeri a bankot (jelenleg: CIB), új bank egy új fájllal hozzáadható.
 - **2026. 10. 13. – 5. lépés kész:** „Kimutatás” fül: összesítő kártyák az előző hónaphoz mérve,
