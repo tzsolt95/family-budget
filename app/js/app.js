@@ -72,9 +72,10 @@ function renderList() {
 
   const inMonth = store.allTransactions().filter((t) => monthOf(t) === ui.month);
   const total = (kind) => inMonth.filter((t) => t.kind === kind).reduce((s, t) => s + t.amount, 0);
-  $('#sum-income').textContent = huf.format(total('income'));
-  $('#sum-expense').textContent = huf.format(-total('expense'));
-  $('#sum-saving').textContent = huf.format(-(total('saving') + total('saving_withdrawal')));
+  // `|| 0` turns -0 into 0, so an empty month shows "0 Ft" instead of "-0 Ft".
+  $('#sum-income').textContent = huf.format(total('income') || 0);
+  $('#sum-expense').textContent = huf.format(-total('expense') || 0);
+  $('#sum-saving').textContent = huf.format(-(total('saving') + total('saving_withdrawal')) || 0);
 
   const shown = groupAutoSavings(inMonth
     .filter((t) => ui.filter === 'all'

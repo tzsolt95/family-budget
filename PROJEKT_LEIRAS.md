@@ -158,6 +158,16 @@ címre. Átköltözéskor használd a „Biztonsági mentés letöltése” és 
 
 ---
 
+### Az app címe és frissítése (GitHub Pages)
+- **Az app címe:** https://tzsolt95.github.io/family-budget/
+- **A kód helye:** https://github.com/tzsolt95/family-budget (nyilvános: a kód és ez a leírás
+  bárki számára látható, de **pénzügyi adat nincs benne**: azok csak a telefonon tárolódnak).
+- **Frissítés:** a módosítás után Claude elmenti (commit), majd a Terminálban:
+  `git push` – kb. 1 perc múlva az új változat elérhető.
+- A bankkivonatok (PDF) és a mentésfájlok a `.gitignore` miatt **soha nem kerülnek fel**.
+
+---
+
 ## 11. Napló
 
 - **2026. 10. 12. – 1. lépés kész:** CIB PDF feltöltése, tételek listázása havonta,
@@ -166,6 +176,8 @@ címre. Átköltözéskor használd a „Biztonsági mentés letöltése” és 
   hibátlanul beolvasva, az egyenlegek centre egyeznek.
 - **2026. 10. 12. – kiegészítés:** kártyák neve (ki fizetett), Revolut feltöltés címke,
   automatikus megtakarítások napi összevonása (szeptemberben 209 sor helyett 153).
+- **2026. 10. 13. – az app élesben:** feltöltve a GitHubra (`tzsolt95/family-budget`),
+  és elérhető a https://tzsolt95.github.io/family-budget/ címen.
 
 ---
 
@@ -173,7 +185,7 @@ címre. Átköltözéskor használd a „Biztonsági mentés letöltése” és 
 
 - [x] A megtakarítás nem számít kiadásnak, de külön szakaszt kap. *(megerősítve)*
 - [x] A grafikonok javasolt listája elfogadva. *(megerősítve)*
-- [ ] Tárhely kiválasztása: GitHub Pages vagy Netlify (a 7. pont 2. lépésénél).
+- [x] Tárhely: **GitHub Pages**, nyilvános tárolóval (repo). *(döntés: 2026. 10. 13.)*
 - [x] Két kártya van a számlán: az egyik Zsolté, a másik a feleségéé. A neveket az appban,
   az Importálás fülön a **Kártyák** résznél kell beírni (a kártyaszámok szándékosan nincsenek a kódban).
 - [x] A Revolut feltöltés **kiadásnak** számít („Revolut feltöltés”, Egyéb kategória).
@@ -193,7 +205,7 @@ Utána sorban:
 4. Párosítás (duplikációk kiszűrése)
 5. Hó végi grafikonok
 6. Mentés/exportálás
-7. Feltöltés tárhelyre, telepítés az iPhone-ra
+7. ~~Feltöltés tárhelyre~~ ✓ kész, telepítés az iPhone-ra
 8. 2. fázis: Supabase, közös használat a feleséggel
 9. Később: Revolut kivonatok importálása
 
