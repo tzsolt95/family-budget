@@ -246,6 +246,7 @@ Nem kell otthoni szerver, és nem kell az App Store sem.
 | `app/js/receipt-parser.js` | A blokk szövegének beolvasása (bolt, dátum, tételek, végösszeg) |
 | `app/js/store.js` | Adatok mentése a telefonon, biztonsági mentés |
 | `app/js/app.js` | A képernyők működése |
+| `app/icons/icon.svg` | Az app ikonja (barna bőr pénztárca kártyával); ebből készülnek a PNG méretek |
 | `app/vendor/pdfjs/` | Ingyenes PDF-olvasó könyvtár (pdf.js) |
 | `tools/check-statement.mjs` | Fejlesztői ellenőrzés: beolvas egy kivonatot, és megnézi, egyeznek-e az összegek |
 | `tools/test-receipts.mjs` | Fejlesztői ellenőrzés a minta-blokkokkal (`node tools/test-receipts.mjs`) |
@@ -287,6 +288,7 @@ címre. Átköltözéskor használd a „Biztonsági mentés letöltése” és 
   hibátlanul beolvasva, az egyenlegek centre egyeznek.
 - **2026. 10. 12. – kiegészítés:** kártyák neve (ki fizetett), Revolut feltöltés címke,
   automatikus megtakarítások napi összevonása (szeptemberben 209 sor helyett 153).
+- **2026. 10. 14. – Új ikon:** barna bőr pénztárca kártyával (a 4 javaslatból a „C”).
 - **2026. 10. 14. – 2. fázis élesben:** Supabase beállítva (séma, engedélyezési lista, Gmail SMTP, kódos e-mail sablon).
   Támadási tesztek a valódi adatbázison: bejelentkezés nélkül olvasás/írás ❌ elutasítva, ismeretlen e-mail-cím
   regisztrációja ❌ elutasítva. Zsolt és a feleség is sikeresen belépett, mindkét telefonon ugyanazok az adatok,
