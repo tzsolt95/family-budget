@@ -105,6 +105,12 @@ nagy tételek voltak.
    és a banki tétel a blokk kategóriái szerint **oszlik meg** (pl. 16 633 Ft SPAR =
    13 143 Ft Élelmiszer + 3 490 Ft Háztartás). **Készpénzes blokk:** önállóan számít.
 
+**Döntés (2026. 10. 13.):** marad az iPhone **Élő szöveg + beillesztés** módszer.
+Megvizsgált, de most elvetett lehetőségek (később elővehetők):
+- *Ingyenes szövegfelismerés az appban (Tesseract):* fotó az appból, 0 Ft, de pontatlanabb, ~10 MB letöltés.
+- *Claude olvassa a fotót (Claude API):* a legpontosabb, kb. 1–3 Ft/blokk, de kell hozzá egy kis
+  privát szerver (pl. Supabase), mert az API-kulcs nem lehet a nyilvános kódban.
+
 ⚠️ A blokkolvasót kitalált minta-blokkokon teszteltük (`tools/receipt-samples/`). Valódi blokkok
 szövegével tovább pontosítható: ilyenkor a valódi szöveget **nem** tesszük a projektbe, csak a mintáját.
 
