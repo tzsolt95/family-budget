@@ -289,7 +289,8 @@ címre. Átköltözéskor használd a „Biztonsági mentés letöltése” és 
   automatikus megtakarítások napi összevonása (szeptemberben 209 sor helyett 153).
 - **2026. 10. 14. – 2. fázis élesben:** Supabase beállítva (séma, engedélyezési lista, Gmail SMTP, kódos e-mail sablon).
   Támadási tesztek a valódi adatbázison: bejelentkezés nélkül olvasás/írás ❌ elutasítva, ismeretlen e-mail-cím
-  regisztrációja ❌ elutasítva. Zsolt és a feleség is sikeresen belépett.
+  regisztrációja ❌ elutasítva. Zsolt és a feleség is sikeresen belépett, mindkét telefonon ugyanazok az adatok,
+  az élő szinkron (felvétel és törlés a másik telefonon) működik. Új regisztráció kikapcsolva.
 - **2026. 10. 13–14. – 2. fázis (app oldal) kész:** belépés e-mail-kóddal, offline működés és szinkronizálás,
   adatbázis-séma biztonsági szabályokkal, magyar beállítási útmutató. 16 szimulált szinkron-teszt sikeres.
 - **2026. 10. 13. – Kártyák:** kártya hozzáadása kézzel (utolsó 4 számjegy + név), kézzel felvett kártya törlése;
@@ -316,7 +317,7 @@ címre. Átköltözéskor használd a „Biztonsági mentés letöltése” és 
 
 - [x] A megtakarítás nem számít kiadásnak, de külön szakaszt kap. *(megerősítve)*
 - [x] A grafikonok javasolt listája elfogadva. *(megerősítve)*
-- [ ] Supabase: **„Allow new users to sign up” kikapcsolása** (mindketten beléptetek már).
+- [x] Supabase: **„Allow new users to sign up” kikapcsolva** (ellenőrizve: 2026. 10. 14.).
 - [ ] Valódi blokkszövegek (SPAR/Tesco/Lidl + egy kis bolt) a blokkolvasó pontosításához.
 - [x] Tárhely: **GitHub Pages**, nyilvános tárolóval (repo). *(döntés: 2026. 10. 13.)*
 - [x] Két kártya van a számlán: az egyik Zsolté, a másik a feleségéé. A neveket az appban,
@@ -345,6 +346,13 @@ Utána sorban:
 7. ~~Feltöltés tárhelyre~~ ✓ kész, telepítés az iPhone-ra
 8. ~~2. fázis: Supabase, közös használat a feleséggel~~ ✓ kész
 9. Később: Revolut kivonatok importálása
+
+**Lehetséges következő ötletek (még nincs döntés):**
+- Havi keret (költségkeret) kategóriánként, figyelmeztetéssel
+- Ki mennyit költött (Zsolt / feleség / közös) a kimutatásban
+- Face ID / PIN zár az app megnyitásakor
+- A blokkolvasó pontosítása valódi blokkszövegekkel
+- Emlékeztető a havi biztonsági mentésre
 
 ---
 
