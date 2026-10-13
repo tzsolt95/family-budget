@@ -61,6 +61,16 @@ ezért a levélben **kódot** küldünk.
 3. **Save**.
 4. Ugyanezt csináld meg a **Confirm signup** sablonnal is (az első belépéskor ezt küldi).
 
+⚠️ **Ingyenes csomagnál a sablon csak saját levelezővel (SMTP) szerkeszthető**, és a beépített levelező
+csak a projekt tagjainak küld. Ezért a leveleket a saját Gmail-fiókunkon keresztül küldjük:
+1. Google-fiók: **2 lépcsős azonosítás** bekapcsolása (https://myaccount.google.com/security).
+2. **Alkalmazásjelszó** létrehozása „Supabase” néven (https://myaccount.google.com/apppasswords).
+   Ezt a jelszót senkinek ne add ki; csak a Supabase-be kell beírni.
+3. Supabase: **Authentication → Emails → SMTP Settings → Enable custom SMTP**:
+   Sender email és Username = a Gmail-cím, Sender name = `Családi Kassza`,
+   Host = `smtp.gmail.com`, Port = `465`, Password = az alkalmazásjelszó → **Save**.
+4. Ezután a sablonok szerkeszthetők.
+
 **Ajánlott:** **Authentication → Providers (Sign In / Providers) → Email** alatt az
 **Email OTP Expiration** legyen **600** (10 perc).
 
@@ -96,5 +106,6 @@ Ettől kezdve **senki új nem tud fiókot létrehozni**, még engedélyezett e-m
 | „Ez az e-mail-cím nincs engedélyezve” | Elírás lehet a 2. lépésben. **Table Editor → allowed_emails** táblában ellenőrizd. |
 | „A fiókod még nincs háztartáshoz rendelve” | A cím fiókja a 2. lépés előtt jött létre. Szólj Claude-nak, egy rövid SQL megoldja. |
 | Nem jön kód | Spam mappa; várj néhány percet (levélkorlát). |
+| Az első levélben link van, nem kód | Ez az első regisztráció levele. Ne a linkre kattints: kérj az appban **új kódot**, a második levélben már kód lesz. |
 | A projekt „paused” (szüneteltetve) | Hosszabb használaton kívüli idő után: a Supabase oldalán **Restore project**. |
 | Elveszett telefon | Szólj Claude-nak: egy rövid SQL-lel az adott fiók összes belépése megszüntethető. Addig is a telefon zárolása véd. |
