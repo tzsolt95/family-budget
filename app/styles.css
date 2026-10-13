@@ -11,6 +11,13 @@
   --save: #7c3aed;
   --danger: #b91c1c;
   --radius: 14px;
+  /* Chart colors, checked for colour-blind safety on these surfaces */
+  --series-income: #2a78d6;
+  --series-expense: #eb6834;
+  --div-pos: #2a78d6;
+  --div-neg: #e34948;
+  --grid: #e5e7eb;
+  --baseline: #c3c2b7;
   color-scheme: light dark;
 }
 
@@ -27,6 +34,12 @@
     --neg: #f87171;
     --save: #c4b5fd;
     --danger: #f87171;
+    --series-income: #3987e5;
+    --series-expense: #d95926;
+    --div-pos: #3987e5;
+    --div-neg: #e66767;
+    --grid: #2b3038;
+    --baseline: #3d434d;
   }
 }
 
@@ -248,3 +261,69 @@ dialog h2 { margin-bottom: 4px; overflow-wrap: anywhere; }
 .receipt-check.warn { border-left: 4px solid var(--neg); }
 .parts { list-style: none; margin: 0 0 14px; padding: 0; font-size: 0.85rem; }
 .parts li { display: flex; justify-content: space-between; padding: 4px 0; border-top: 1px solid var(--line); }
+
+/* ---------- Kimutatás ---------- */
+.small { font-size: 0.8rem; }
+.kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.kpis.inner { margin: 4px 0 12px; }
+.kpi { background: var(--surface); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.kpis.inner .kpi { background: var(--bg); }
+.kpi.wide { grid-column: 1 / -1; }
+.kpi span { font-size: 0.75rem; color: var(--muted); }
+.kpi strong { font-size: 1.25rem; font-weight: 650; white-space: nowrap; }
+.kpi.wide strong { font-size: 1.6rem; }
+.kpi small { font-size: 0.75rem; color: var(--muted); }
+.kpi small.good { color: var(--pos); }
+.kpi small.bad { color: var(--neg); }
+
+.chart-card h2 { margin-bottom: 2px; }
+.chart-card > .muted { margin-bottom: 12px; }
+
+/* Horizontal bars: spending by category (one series, one colour) */
+.hbars { display: flex; flex-direction: column; gap: 10px; }
+.hbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: baseline; }
+.hbar-label { font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hbar-value { font-size: 0.9rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hbar-value small { color: var(--muted); font-weight: 400; margin-left: 4px; }
+.hbar-track { grid-column: 1 / -1; height: 12px; }
+.hbar-fill { height: 100%; min-width: 3px; background: var(--series-income); border-radius: 0 4px 4px 0; }
+
+/* Columns: month comparison */
+.legend { display: flex; gap: 14px; font-size: 0.8rem; color: var(--muted); margin: 6px 0 4px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+.key-income { background: var(--series-income); }
+.key-expense { background: var(--series-expense); }
+.readout { min-height: 2.6em; margin: 4px 0 6px; font-size: 0.85rem; color: var(--muted); }
+.readout strong { color: var(--text); font-weight: 650; }
+
+.cols { display: flex; align-items: stretch; gap: 4px; height: 190px; }
+.col {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+  border: 0; padding: 0 0 0; background: none; color: inherit; font: inherit; border-radius: 8px;
+}
+.col:focus-visible { outline: 2px solid var(--accent); }
+.col.active { background: var(--bg); }
+.col-bars { flex: 1; width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 2px; border-bottom: 1px solid var(--baseline); }
+.col-bar { width: min(18px, 40%); min-height: 2px; border-radius: 4px 4px 0 0; }
+.col-bar.income { background: var(--series-income); }
+.col-bar.expense { background: var(--series-expense); }
+.col-label { font-size: 0.72rem; color: var(--muted); padding: 4px 0 2px; white-space: nowrap; }
+.col.active .col-label { color: var(--text); font-weight: 600; }
+
+/* Diverging columns: net savings */
+.cols.diverging { height: 170px; }
+.cols.diverging .col { justify-content: stretch; }
+.div-half { flex: 1; width: 100%; display: flex; justify-content: center; }
+.div-half.up { align-items: flex-end; border-bottom: 1px solid var(--baseline); }
+.div-half.down { align-items: flex-start; }
+.div-bar { width: min(22px, 50%); min-height: 0; }
+.div-bar.pos { background: var(--div-pos); border-radius: 4px 4px 0 0; }
+.div-bar.neg { background: var(--div-neg); border-radius: 0 0 4px 4px; }
+
+.table-view { margin-top: 12px; font-size: 0.85rem; }
+.table-view summary { color: var(--accent); cursor: pointer; }
+.table-view table { width: 100%; border-collapse: collapse; margin-top: 8px; font-variant-numeric: tabular-nums; }
+.table-view th, .table-view td { padding: 6px 4px; border-top: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.table-view th:first-child, .table-view td:first-child { text-align: left; }
+.table-view th { color: var(--muted); font-weight: 500; }

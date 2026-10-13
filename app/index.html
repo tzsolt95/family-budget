@@ -20,14 +20,15 @@
   </header>
 
   <main>
+    <!-- Shared by the Tételek and Kimutatás tabs -->
+    <div class="month-nav" id="month-nav">
+      <button type="button" id="month-prev" class="icon-btn" aria-label="Előző hónap">‹</button>
+      <h2 id="month-label">–</h2>
+      <button type="button" id="month-next" class="icon-btn" aria-label="Következő hónap">›</button>
+    </div>
+
     <!-- Tételek -->
     <section id="view-list" class="view" aria-label="Tételek">
-      <div class="month-nav">
-        <button type="button" id="month-prev" class="icon-btn" aria-label="Előző hónap">‹</button>
-        <h2 id="month-label">–</h2>
-        <button type="button" id="month-next" class="icon-btn" aria-label="Következő hónap">›</button>
-      </div>
-
       <div class="tiles">
         <div class="tile"><span>Bevétel</span><strong id="sum-income" class="pos">0 Ft</strong></div>
         <div class="tile"><span>Kiadás</span><strong id="sum-expense" class="neg">0 Ft</strong></div>
@@ -48,6 +49,49 @@
         vagy adj hozzá egyet a <strong>+</strong> gombbal.
       </p>
       <button type="button" id="add-btn" class="fab" aria-label="Új tétel">+</button>
+    </section>
+
+    <!-- Kimutatás -->
+    <section id="view-report" class="view" aria-label="Kimutatás" hidden>
+      <div class="kpis">
+        <div class="kpi"><span>Bevétel</span><strong id="kpi-income">0 Ft</strong><small id="kpi-income-delta"></small></div>
+        <div class="kpi"><span>Kiadás</span><strong id="kpi-expense">0 Ft</strong><small id="kpi-expense-delta"></small></div>
+        <div class="kpi wide"><span>Maradék (bevétel − kiadás)</span><strong id="kpi-left">0 Ft</strong><small id="kpi-left-delta"></small></div>
+      </div>
+      <p id="kpi-cash" class="muted small" hidden></p>
+
+      <div class="card chart-card">
+        <h2>Kiadások kategóriánként</h2>
+        <p class="muted small">A blokkok tételei a saját kategóriájukba számítanak.</p>
+        <div id="cat-bars" class="hbars"></div>
+        <p id="cat-empty" class="empty small" hidden>Ebben a hónapban nincs kiadás.</p>
+      </div>
+
+      <div class="card chart-card">
+        <h2>Bevétel és kiadás hónaponként</h2>
+        <div class="legend" aria-hidden="true">
+          <span><i class="key key-income"></i>Bevétel</span>
+          <span><i class="key key-expense"></i>Kiadás</span>
+        </div>
+        <p id="month-readout" class="readout" aria-live="polite"></p>
+        <div id="month-cols" class="cols" role="group" aria-label="Hónapok"></div>
+        <details class="table-view">
+          <summary>Táblázat</summary>
+          <table id="month-table"></table>
+        </details>
+      </div>
+
+      <div class="card chart-card">
+        <h2>Megtakarítás</h2>
+        <div class="kpis inner">
+          <div class="kpi"><span>Félretett</span><strong id="sav-put">0 Ft</strong></div>
+          <div class="kpi"><span>Visszavett</span><strong id="sav-back">0 Ft</strong></div>
+          <div class="kpi wide"><span>Nettó megtakarítás</span><strong id="sav-net">0 Ft</strong></div>
+        </div>
+        <p class="muted small">Nettó megtakarítás hónaponként (fölfelé: félretett, lefelé: visszavett)</p>
+        <p id="saving-readout" class="readout" aria-live="polite"></p>
+        <div id="saving-cols" class="cols diverging" role="group" aria-label="Megtakarítás hónaponként"></div>
+      </div>
     </section>
 
     <!-- Importálás -->
@@ -88,6 +132,7 @@
 
   <nav class="tabbar">
     <a href="#list" data-view="list" class="active"><span aria-hidden="true">📋</span>Tételek</a>
+    <a href="#report" data-view="report"><span aria-hidden="true">📊</span>Kimutatás</a>
     <a href="#import" data-view="import"><span aria-hidden="true">⬆️</span>Importálás</a>
   </nav>
 

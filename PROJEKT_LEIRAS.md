@@ -5,7 +5,7 @@
 > és onnan folytathatod a munkát.
 
 **Létrehozva:** 2026. október 12.
-**Állapot:** az 1–3. lépés kész (CIB PDF, kézi bevitel, blokkok). Következik: hó végi grafikonok.
+**Állapot:** az 1–5. lépés kész (CIB PDF, kézi bevitel, blokkok, hó végi kimutatás). Következik: 2. fázis (közös használat).
 
 ---
 
@@ -116,12 +116,22 @@ szövegével tovább pontosítható: ilyenkor a valódi szöveget **nem** tessz�
 
 ---
 
-## 5. Hó végi kimutatás (grafikonok) – elfogadva
+## 5. Hó végi kimutatás – „📊 Kimutatás” fül (elkészült)
 
-- **Összesítő kártyák:** összes bevétel, összes kiadás, megtakarítás, maradék pénz
-- **Kiadások kategóriánként:** oszlopdiagram, a legnagyobb kategória elöl
-- **Hónapok összehasonlítása:** bevétel és kiadás az elmúlt néhány hónapban
-- **Megtakarítás alakulása:** mennyi ment be és mennyi jött ki
+A hónapot a fül tetején lehet váltani (ugyanaz, mint a Tételek fülön).
+
+- **Összesítő kártyák:** Bevétel, Kiadás, **Maradék** (bevétel − kiadás), mindegyiknél
+  a változás az előző hónaphoz képest (▲/▼; zöld, ha jó irányba változott).
+  Összehasonlítás csak **teljes** előző hónappal történik (a kivonatok lefedik az egész hónapot,
+  vagy vannak benne kézi tételek), különben félrevezető lenne.
+- **Készpénzfelvétel** külön sorban (nem kiadás).
+- **Kiadások kategóriánként:** vízszintes sávok, a legnagyobb elöl, összeg + százalék.
+  A blokkok tételei a saját kategóriájukba számítanak.
+- **Bevétel és kiadás hónaponként:** az utolsó legfeljebb 6 hónap oszlopai.
+  Egy oszlopra koppintva fölötte megjelennek a pontos számok. **Táblázat** nézet is van.
+- **Megtakarítás (külön szakasz):** Félretett, Visszavett, Nettó; hónaponkénti oszlop
+  (fölfelé kék: félretett, lefelé piros: többet vettetek vissza).
+- A színeket színtévesztők számára is ellenőriztük, világos és sötét módban is.
 
 ---
 
@@ -155,7 +165,8 @@ Nem kell otthoni szerver, és nem kell az App Store sem.
 - **Webes app (PWA):** weboldal, ami appként viselkedik. Minden iPhone-on működik, típustól függetlenül.
 - **Egyszerű HTML + CSS + JavaScript**, bonyolult építőeszközök nélkül.
 - **pdf.js:** ingyenes eszköz a PDF bankkivonat beolvasásához, közvetlenül a telefonon.
-- **Chart.js:** ingyenes eszköz a grafikonokhoz.
+- **Grafikonok:** saját, egyszerű HTML/CSS megoldás (a Chart.js helyett): kisebb, offline is működik,
+  és illeszkedik a világos/sötét módhoz.
 - **Tárolás az 1. fázisban:** a telefon böngészőjének saját tárhelye (helyi tárolás).
 
 ### Amit a CIB kivonatról megtudtunk (2026. szeptemberi minták alapján)
@@ -187,6 +198,7 @@ Nem kell otthoni szerver, és nem kell az App Store sem.
 | `app/index.html`, `app/styles.css` | A képernyők és a kinézet |
 | `app/js/cib-parser.js` | A CIB PDF kivonat beolvasása és ellenőrzése |
 | `app/js/categories.js` | Kategóriák és a besorolási szabályok (bankkivonat és blokk-tételek) |
+| `app/js/report.js` | A hó végi kimutatás számításai (összesítők, kategóriák, hónapok) |
 | `app/js/receipt-parser.js` | A blokk szövegének beolvasása (bolt, dátum, tételek, végösszeg) |
 | `app/js/store.js` | Adatok mentése a telefonon, biztonsági mentés |
 | `app/js/app.js` | A képernyők működése |
@@ -225,6 +237,9 @@ címre. Átköltözéskor használd a „Biztonsági mentés letöltése” és 
   hibátlanul beolvasva, az egyenlegek centre egyeznek.
 - **2026. 10. 12. – kiegészítés:** kártyák neve (ki fizetett), Revolut feltöltés címke,
   automatikus megtakarítások napi összevonása (szeptemberben 209 sor helyett 153).
+- **2026. 10. 13. – 5. lépés kész:** „Kimutatás” fül: összesítő kártyák az előző hónaphoz mérve,
+  kiadások kategóriánként (blokkok tételenként), bevétel/kiadás hónaponként táblázattal,
+  külön megtakarítás szakasz.
 - **2026. 10. 13. – 3. lépés kész:** blokk beillesztése (Élő szöveg), automatikus felismerés,
   ellenőrző képernyő, tételenkénti kategória memóriával, kártyás blokk ↔ banki tétel összekapcsolás
   és megosztás kategóriák szerint.
@@ -260,10 +275,10 @@ címre. Átköltözéskor használd a „Biztonsági mentés letöltése” és 
 Utána sorban:
 3. ~~Blokk beillesztése és tételekre bontása~~ ✓ kész
 4. ~~Párosítás: blokk ↔ banki tétel~~ ✓ kész (a 3. lépéssel együtt)
-5. **Hó végi grafikonok** ← következik
+5. ~~Hó végi grafikonok~~ ✓ kész
 6. ~~Mentés/exportálás~~ ✓ kész (az 1. lépéssel együtt)
 7. ~~Feltöltés tárhelyre~~ ✓ kész, telepítés az iPhone-ra
-8. 2. fázis: Supabase, közös használat a feleséggel
+8. **2. fázis: Supabase, közös használat a feleséggel** ← következik
 9. Később: Revolut kivonatok importálása
 
 ---

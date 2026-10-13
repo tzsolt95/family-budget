@@ -1,8 +1,9 @@
-// Screen logic: tabs, monthly list, manual entries, receipts, PDF import, backup.
+// Screen logic: tabs, monthly list, report, manual entries, receipts, PDF import, backup.
 
 import * as store from './store.js';
 import { KINDS, categoryById, categoriesForKind, isTransferKind, suggestForName, suggestItemCategory } from './categories.js';
 import { parseReceipt, parsePrice } from './receipt-parser.js';
+import { recentMonths } from './report.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -52,13 +53,18 @@ function groupAutoSavings(list) {
 
 // ---------- Tabs ----------
 
+const VIEWS = { '#report': 'report', '#import': 'import' };
+const currentView = () => VIEWS[location.hash] ?? 'list';
+
 function showView() {
-  const view = location.hash === '#import' ? 'import' : 'list';
+  const view = currentView();
   $('#view-list').hidden = view !== 'list';
+  $('#view-report').hidden = view !== 'report';
   $('#view-import').hidden = view !== 'import';
+  $('#month-nav').hidden = view === 'import';
   document.querySelectorAll('.tabbar a').forEach((a) => a.classList.toggle('active', a.dataset.view === view));
-  if (view === 'list') renderList();
-  else renderHistory();
+  if (view === 'import') renderHistory();
+  else renderCurrent();
   window.scrollTo(0, 0);
 }
 
@@ -68,14 +74,23 @@ function availableMonths() {
   return [...new Set(store.countedTransactions().map(monthOf))].sort();
 }
 
-function renderList() {
+function renderMonthNav() {
   const months = availableMonths();
-  if (!ui.month || !months.includes(ui.month)) ui.month = months.at(-1) ?? new Date().toISOString().slice(0, 7);
+  if (!ui.month || !months.includes(ui.month)) ui.month = months.at(-1) ?? todayIso().slice(0, 7);
   const index = months.indexOf(ui.month);
   $('#month-label').textContent = monthFmt.format(parseDate(`${ui.month}-01`));
   $('#month-prev').disabled = index <= 0;
   $('#month-next').disabled = index === -1 || index >= months.length - 1;
+}
 
+// Redraws whichever of the two month-based tabs is open.
+function renderCurrent() {
+  renderMonthNav();
+  if (currentView() === 'report') renderReport();
+  else if (currentView() === 'list') renderList();
+}
+
+function renderList() {
   const inMonth = store.countedTransactions().filter((t) => monthOf(t) === ui.month);
   const total = (kind) => inMonth.filter((t) => t.kind === kind).reduce((s, t) => s + t.amount, 0);
   // `|| 0` turns -0 into 0, so an empty month shows "0 Ft" instead of "-0 Ft".
@@ -231,10 +246,182 @@ function saveDetails(event) {
     if (tx && category !== tx.category) {
       const changed = store.setCategory(ui.openId, category, $('#dlg-remember').checked);
       toast(changed > 1 ? `${changed} tétel átsorolva: ${categoryById(category).label}` : 'Kategória mentve');
-      renderList();
+      renderCurrent();
     }
   }
   ui.openId = null;
+}
+
+// ---------- Kimutatás ----------
+
+const pct = new Intl.NumberFormat('hu-HU', { style: 'percent', maximumFractionDigits: 0 });
+const shortMonth = new Intl.DateTimeFormat('hu-HU', { month: 'short' });
+const longMonth = new Intl.DateTimeFormat('hu-HU', { year: 'numeric', month: 'long' });
+const monthName = (m, fmt = shortMonth) => fmt.format(parseDate(`${m}-01`));
+
+// "+12 400 Ft az előző hónaphoz képest", coloured by whether the change is good.
+function setDelta(el, now, before, upIsGood) {
+  if (before === null) {
+    el.textContent = '';
+    return;
+  }
+  const diff = Math.round(now - before);
+  el.className = diff === 0 ? '' : (diff > 0) === upIsGood ? 'good' : 'bad';
+  el.textContent = diff === 0
+    ? 'ugyanannyi, mint az előző hónapban'
+    : `${diff > 0 ? '▲ +' : '▼ −'}${huf.format(Math.abs(diff))} az előző hónaphoz képest`;
+}
+
+function renderReport() {
+  const months = recentMonths(ui.month);
+  const now = months.at(-1);
+  const prev = months.length > 1 && months.at(-2).complete ? months.at(-2) : null;
+
+  $('#kpi-income').textContent = huf.format(now.income || 0);
+  $('#kpi-expense').textContent = huf.format(now.expense || 0);
+  $('#kpi-left').textContent = huf.format(now.left || 0);
+  setDelta($('#kpi-income-delta'), now.income, prev ? prev.income : null, true);
+  setDelta($('#kpi-expense-delta'), now.expense, prev ? prev.expense : null, false);
+  setDelta($('#kpi-left-delta'), now.left, prev ? prev.left : null, true);
+  const cashNote = $('#kpi-cash');
+  cashNote.hidden = !now.cash;
+  cashNote.textContent = `💵 Készpénzfelvétel: ${huf.format(now.cash)} (nem számít kiadásnak; a készpénzes vásárlások kézzel rögzítve számítanak)`;
+
+  renderCategoryBars(now);
+  renderMonthColumns(months);
+  renderSavings(months);
+}
+
+function renderCategoryBars(summary) {
+  const max = summary.categories[0]?.amount ?? 0;
+  $('#cat-empty').hidden = summary.categories.length > 0;
+  $('#cat-bars').replaceChildren(...summary.categories.map(({ category, amount }) => {
+    const c = categoryById(category);
+    const row = document.createElement('div');
+    row.className = 'hbar';
+    const label = document.createElement('span');
+    label.className = 'hbar-label';
+    label.textContent = `${c.icon} ${c.label}`;
+    const value = document.createElement('span');
+    value.className = 'hbar-value';
+    value.textContent = huf.format(amount);
+    const share = document.createElement('small');
+    share.textContent = pct.format(amount / summary.expense);
+    value.append(share);
+    const track = document.createElement('div');
+    track.className = 'hbar-track';
+    const fill = document.createElement('div');
+    fill.className = 'hbar-fill';
+    fill.style.width = `${(amount / max) * 100}%`;
+    track.append(fill);
+    row.append(label, value, track);
+    return row;
+  }));
+}
+
+// "2026. szeptember: Bevétel 766 008 Ft · Kiadás …" - values bold, labels quiet.
+function setReadout(el, title, parts) {
+  el.replaceChildren(`${title}: `, ...parts.flatMap(([label, value], i) => {
+    const strong = document.createElement('strong');
+    strong.textContent = value;
+    return [i ? ' · ' : '', `${label} `, strong];
+  }));
+}
+
+function monthReadout(m) {
+  setReadout($('#month-readout'), monthName(m.month, longMonth), [
+    ['Bevétel', huf.format(m.income || 0)],
+    ['Kiadás', huf.format(m.expense || 0)],
+    ['Maradék', huf.format(m.left || 0)],
+  ]);
+}
+
+function columnButton(m, onSelect) {
+  const col = document.createElement('button');
+  col.type = 'button';
+  col.className = `col${m.month === ui.month ? ' active' : ''}`;
+  col.addEventListener('pointerenter', () => onSelect(m));
+  col.addEventListener('focus', () => onSelect(m));
+  col.addEventListener('click', () => onSelect(m));
+  return col;
+}
+
+function renderMonthColumns(months) {
+  const max = Math.max(1, ...months.flatMap((m) => [m.income, m.expense]));
+  $('#month-cols').replaceChildren(...months.map((m) => {
+    const col = columnButton(m, monthReadout);
+    col.setAttribute('aria-label', `${monthName(m.month, longMonth)}: bevétel ${huf.format(m.income)}, kiadás ${huf.format(m.expense)}`);
+    const bars = document.createElement('div');
+    bars.className = 'col-bars';
+    for (const [cls, value] of [['income', m.income], ['expense', m.expense]]) {
+      const bar = document.createElement('div');
+      bar.className = `col-bar ${cls}`;
+      bar.style.height = `${(value / max) * 100}%`;
+      bars.append(bar);
+    }
+    const label = document.createElement('span');
+    label.className = 'col-label';
+    label.textContent = monthName(m.month);
+    col.append(bars, label);
+    return col;
+  }));
+  monthReadout(months.at(-1));
+  $('#month-cols').onpointerleave = () => monthReadout(months.at(-1));
+
+  const table = $('#month-table');
+  const head = document.createElement('tr');
+  for (const h of ['Hónap', 'Bevétel', 'Kiadás', 'Maradék', 'Megtak.']) {
+    const th = document.createElement('th');
+    th.textContent = h;
+    head.append(th);
+  }
+  table.replaceChildren(head, ...months.map((m) => {
+    const tr = document.createElement('tr');
+    for (const v of [monthName(m.month, longMonth), m.income, m.expense, m.left, m.saved]) {
+      const td = document.createElement('td');
+      td.textContent = typeof v === 'number' ? huf.format(v || 0) : v;
+      tr.append(td);
+    }
+    return tr;
+  }));
+}
+
+function savingReadout(m) {
+  setReadout($('#saving-readout'), monthName(m.month, longMonth), [
+    ['Félretett', huf.format(m.putAway || 0)],
+    ['Visszavett', huf.format(m.takenBack || 0)],
+    ['Nettó', huf.format(m.saved || 0)],
+  ]);
+}
+
+function renderSavings(months) {
+  const now = months.at(-1);
+  $('#sav-put').textContent = huf.format(now.putAway || 0);
+  $('#sav-back').textContent = huf.format(now.takenBack || 0);
+  const net = $('#sav-net');
+  net.textContent = huf.format(now.saved || 0);
+  net.className = now.saved < 0 ? 'neg' : '';
+
+  const max = Math.max(1, ...months.map((m) => Math.abs(m.saved)));
+  $('#saving-cols').replaceChildren(...months.map((m) => {
+    const col = columnButton(m, savingReadout);
+    col.setAttribute('aria-label', `${monthName(m.month, longMonth)}: nettó megtakarítás ${huf.format(m.saved)}`);
+    const up = document.createElement('div');
+    up.className = 'div-half up';
+    const down = document.createElement('div');
+    down.className = 'div-half down';
+    const bar = document.createElement('div');
+    bar.className = `div-bar ${m.saved >= 0 ? 'pos' : 'neg'}`;
+    bar.style.height = `${(Math.abs(m.saved) / max) * 100}%`;
+    (m.saved >= 0 ? up : down).append(bar);
+    const label = document.createElement('span');
+    label.className = 'col-label';
+    label.textContent = monthName(m.month);
+    col.append(up, down, label);
+    return col;
+  }));
+  savingReadout(now);
+  $('#saving-cols').onpointerleave = () => savingReadout(now);
 }
 
 // ---------- Manual entry dialog ----------
@@ -350,7 +537,7 @@ function saveEntry(event) {
     ui.month = tx.date.slice(0, 7);
     toast(tx.linkedBankId ? 'Mentve, és összekapcsolva a banki tétellel 🔗' : 'Mentve');
   }
-  renderList();
+  renderCurrent();
 }
 
 // ---------- Receipt dialog ----------
@@ -507,7 +694,7 @@ function saveReceipt(event) {
     toast(tx.linkedBankId ? 'Blokk mentve, és összekapcsolva a banki tétellel 🔗' : 'Blokk mentve');
   }
   ui.openId = null;
-  renderList();
+  renderCurrent();
 }
 
 // ---------- PDF import ----------
@@ -661,12 +848,12 @@ window.addEventListener('hashchange', showView);
 $('#month-prev').addEventListener('click', () => {
   const months = availableMonths();
   ui.month = months[months.indexOf(ui.month) - 1] ?? ui.month;
-  renderList();
+  renderCurrent();
 });
 $('#month-next').addEventListener('click', () => {
   const months = availableMonths();
   ui.month = months[months.indexOf(ui.month) + 1] ?? ui.month;
-  renderList();
+  renderCurrent();
 });
 
 document.querySelector('.chips').addEventListener('click', (e) => {
@@ -674,7 +861,7 @@ document.querySelector('.chips').addEventListener('click', (e) => {
   if (!chip) return;
   ui.filter = chip.dataset.filter;
   document.querySelectorAll('.chip').forEach((c) => c.classList.toggle('active', c === chip));
-  renderList();
+  renderCurrent();
 });
 
 $('#tx-list').addEventListener('click', (e) => {
@@ -723,7 +910,7 @@ entryForm().title.addEventListener('input', () => {
 
 // Monthly repeats are added when the app opens or comes back to the screen.
 function addDueRepeats() {
-  if (store.ensureRecurring(todayIso()) && !$('#view-list').hidden) renderList();
+  if (store.ensureRecurring(todayIso()) && currentView() !== 'import') renderCurrent();
 }
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') addDueRepeats();

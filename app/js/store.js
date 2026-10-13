@@ -43,6 +43,16 @@ export const importHistory = () => [...state.imports].reverse();
 // True when an uploaded statement covers this day, so a card payment should be on it.
 export const statementCovers = (date) => state.imports.some((i) => i.periodFrom <= date && date <= i.periodTo);
 
+// True when uploaded statements cover every day of the month (e.g. 1–14, 15–28, 29–30).
+export function monthCovered(month) {
+  const [y, m] = month.split('-').map(Number);
+  const days = new Date(y, m, 0).getDate();
+  for (let d = 1; d <= days; d++) {
+    if (!statementCovers(`${month}-${String(d).padStart(2, '0')}`)) return false;
+  }
+  return true;
+}
+
 // A card entry typed by hand that was later found on the bank statement is
 // counted once, through the bank line. These are the items to show and sum.
 export const countedTransactions = () => allTransactions().filter((t) => !t.linkedBankId);
