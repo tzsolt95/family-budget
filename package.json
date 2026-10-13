@@ -1,0 +1,14 @@
+{
+  "name": "csaladi-koltsegvetes",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Családi költségvetés webes app (PWA)",
+  "scripts": {
+    "start": "python3 -m http.server 8080 --directory app",
+    "check": "node tools/check-statement.mjs"
+  },
+  "devDependencies": {
+    "pdfjs-dist": "4.10.38"
+  }
+}

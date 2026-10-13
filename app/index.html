@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f766e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Kassza">
+  <title>Családi Kassza</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Családi Kassza</h1>
+  </header>
+
+  <main>
+    <!-- Tételek -->
+    <section id="view-list" class="view" aria-label="Tételek">
+      <div class="month-nav">
+        <button type="button" id="month-prev" class="icon-btn" aria-label="Előző hónap">‹</button>
+        <h2 id="month-label">–</h2>
+        <button type="button" id="month-next" class="icon-btn" aria-label="Következő hónap">›</button>
+      </div>
+
+      <div class="tiles">
+        <div class="tile"><span>Bevétel</span><strong id="sum-income" class="pos">0 Ft</strong></div>
+        <div class="tile"><span>Kiadás</span><strong id="sum-expense" class="neg">0 Ft</strong></div>
+        <div class="tile wide"><span>Megtakarítás (nettó)</span><strong id="sum-saving" class="save">0 Ft</strong></div>
+      </div>
+
+      <div class="chips" role="tablist" aria-label="Szűrés">
+        <button type="button" class="chip active" data-filter="all">Mind</button>
+        <button type="button" class="chip" data-filter="expense">Kiadás</button>
+        <button type="button" class="chip" data-filter="income">Bevétel</button>
+        <button type="button" class="chip" data-filter="saving">Megtakarítás</button>
+      </div>
+
+      <div id="tx-list"></div>
+      <p id="empty-state" class="empty" hidden>
+        Ebben a hónapban még nincs tétel.<br>
+        Tölts fel egy CIB kivonatot az <a href="#import">Importálás</a> fülön.
+      </p>
+    </section>
+
+    <!-- Importálás -->
+    <section id="view-import" class="view" aria-label="Importálás" hidden>
+      <div class="card">
+        <h2>CIB bankszámlakivonat</h2>
+        <p class="muted">Válaszd ki a PDF kivonatot. Egyszerre többet is választhatsz. A már feltöltött tételeket az app nem veszi fel még egyszer.</p>
+        <label class="btn primary">
+          PDF kiválasztása
+          <input type="file" id="pdf-input" accept="application/pdf,.pdf" multiple hidden>
+        </label>
+        <div id="import-results"></div>
+      </div>
+
+      <div class="card" id="cards-card" hidden>
+        <h2>Kártyák</h2>
+        <p class="muted">Írd be, kié melyik kártya. Így a listában a név látszik a kártyaszám helyett.</p>
+        <div id="card-list"></div>
+      </div>
+
+      <div class="card">
+        <h2>Mentés</h2>
+        <p class="muted">Az adatok csak ezen a telefonon vannak. Havonta érdemes biztonsági mentést készíteni.</p>
+        <button type="button" id="backup-btn" class="btn">Biztonsági mentés letöltése</button>
+        <label class="btn">
+          Mentés visszatöltése
+          <input type="file" id="restore-input" accept="application/json,.json" hidden>
+        </label>
+        <button type="button" id="clear-btn" class="btn danger">Minden adat törlése</button>
+      </div>
+
+      <div class="card">
+        <h2>Korábbi feltöltések</h2>
+        <ul id="import-history" class="history"></ul>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabbar">
+    <a href="#list" data-view="list" class="active"><span aria-hidden="true">📋</span>Tételek</a>
+    <a href="#import" data-view="import"><span aria-hidden="true">⬆️</span>Importálás</a>
+  </nav>
+
+  <dialog id="tx-dialog">
+    <form method="dialog">
+      <h2 id="dlg-title"></h2>
+      <p id="dlg-amount" class="dlg-amount"></p>
+      <dl id="dlg-details" class="details"></dl>
+      <label class="field">
+        Kategória
+        <select id="dlg-category"></select>
+      </label>
+      <label class="check">
+        <input type="checkbox" id="dlg-remember" checked>
+        <span>Ennél a boltnál/partnernél mindig ezt használd</span>
+      </label>
+      <div class="dlg-actions">
+        <button value="cancel" class="btn">Mégse</button>
+        <button value="save" class="btn primary">Mentés</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

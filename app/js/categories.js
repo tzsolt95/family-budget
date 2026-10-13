@@ -1,0 +1,98 @@
+// Categories and the rules that suggest a category for a bank transaction.
+
+import { isOwnAccountTransfer } from './cib-parser.js';
+
+export const KINDS = {
+  expense: 'Kiadás',
+  income: 'Bevétel',
+  saving: 'Megtakarítás',
+  saving_withdrawal: 'Megtakarítás feloldása',
+};
+
+export const CATEGORIES = [
+  { id: 'food', label: 'Élelmiszer', icon: '🛒', kind: 'expense' },
+  { id: 'household', label: 'Háztartás', icon: '🏠', kind: 'expense' },
+  { id: 'utilities', label: 'Rezsi', icon: '💡', kind: 'expense' },
+  { id: 'restaurant', label: 'Étterem, rendelés', icon: '🍽️', kind: 'expense' },
+  { id: 'entertainment', label: 'Szórakozás', icon: '🎬', kind: 'expense' },
+  { id: 'transport', label: 'Közlekedés', icon: '🚌', kind: 'expense' },
+  { id: 'subscriptions', label: 'Előfizetések', icon: '🔁', kind: 'expense' },
+  { id: 'health', label: 'Egészség', icon: '💊', kind: 'expense' },
+  { id: 'clothing', label: 'Ruházat', icon: '👕', kind: 'expense' },
+  { id: 'loan', label: 'Hitel', icon: '🏦', kind: 'expense' },
+  { id: 'insurance', label: 'Biztosítás', icon: '🛡️', kind: 'expense' },
+  { id: 'other', label: 'Egyéb', icon: '📦', kind: 'expense' },
+  { id: 'salary', label: 'Fizetés', icon: '💼', kind: 'income' },
+  { id: 'refund', label: 'Visszatérítés', icon: '↩️', kind: 'income' },
+  { id: 'interest', label: 'Kamat', icon: '📈', kind: 'income' },
+  { id: 'other_income', label: 'Egyéb bevétel', icon: '💰', kind: 'income' },
+  { id: 'saving', label: 'Megtakarítás', icon: '🐷', kind: 'saving' },
+  { id: 'saving_withdrawal', label: 'Megtakarítás feloldása', icon: '🔓', kind: 'saving_withdrawal' },
+];
+
+const BY_ID = new Map(CATEGORIES.map((c) => [c.id, c]));
+export const categoryById = (id) => BY_ID.get(id) ?? BY_ID.get('other');
+export const categoriesForKind = (kind) => CATEGORIES.filter((c) => c.kind === kind);
+
+// The user's own choices ("always put this shop here") win over everything.
+let userRules = {};
+export function setUserRules(rules) {
+  userRules = rules ?? {};
+}
+export const ruleKey = (tx) => (tx.title ?? '').toUpperCase().replace(/\s+\d+$/, '').trim();
+
+// Shop names win over the card category code (MCC), because they are more specific.
+const KEYWORDS = [
+  ['restaurant', /\b(WOLT|FOODORA|NETPINCER|MCD|MCDONALD|KFC|BURGER KING|SUBWAY|CUKR[AÁ]SZDA|ÉTTEREM|ETTEREM|BISTRO|PIZZA)/i],
+  ['food', /\b(SPAR|INTERSPAR|TESCO|LIDL|ALDI|AUCHAN|PENNY|CBA|COOP|PRIMA|PEK|PÉK|BAKERY|ZOLDSEG|ZÖLDSÉG|PIAC|HENTES)\b/i],
+  ['household', /\b(DM|ROSSMANN|MÜLLER|MULLER|IKEA|JYSK|OBI|PRAKTIKER|BAUHAUS|PEPCO|TEDI|ACTION)\b/i],
+  ['utilities', /\b(MVM|ELMŰ|ELMU|FŐTÁV|FOTAV|FCSM|VÍZMŰ|VIZMU|TELEKOM|VODAFONE|YETTEL|DIGI|ONE HUNGARY|NHKV)/i],
+  ['transport', /\b(MÁV|MAV|BKK|VOLÁN|VOLAN|BOLT|UBER|MOL|OMV|SHELL|LUKOIL|PARKOL)/i],
+  ['subscriptions', /\b(NETFLIX|SPOTIFY|CLAUDE|ANTHROPIC|OPENAI|APPLE\.COM|ICLOUD|GOOGLE|YOUTUBE|HBO|DISNEY|MAX\.COM|AMAZON PRIME)/i],
+  ['entertainment', /\b(CINEMA|MOZI|JEGY\.HU|TICKET|EVENTIM|SZINHAZ|SZÍNHÁZ|MÚZEUM|MUZEUM)/i],
+  ['health', /\b(BENU|PATIKA|GYÓGY|GYOGY|PHARMA|DENT|ORVOS|LABOR)/i],
+  ['clothing', /\b(DEICHMANN|H&M|ZARA|C&A|RESERVED|SINSAY|CCC|DECATHLON|LPP|NEW YORKER)/i],
+  ['insurance', /BIZTOSÍT|BIZTOSIT/i],
+];
+
+// Merchant Category Codes printed on every card purchase.
+const MCC_RANGES = [
+  ['food', [5411, 5422, 5441, 5451, 5462, 5499]],
+  ['restaurant', [5811, 5812, 5813, 5814]],
+  ['entertainment', [7995, 7832, 7841, 7922, 7929, 7932, 7933, 7941, 7991, 7992, 7993, 7994, 7996, 7997, 7998, 7999]],
+  ['transport', [4011, 4111, 4112, 4121, 4131, 4784, 4789, 5541, 5542, 5983, 7511, 7523, 7531, 7538, 7542]],
+  ['utilities', [4814, 4816, 4900]],
+  ['subscriptions', [4899, 5815, 5816, 5817, 5818, 5968]],
+  ['health', [5122, 5912, 5975, 5976, 8011, 8021, 8031, 8041, 8042, 8043, 8049, 8050, 8062, 8071, 8099]],
+  ['clothing', [5611, 5621, 5631, 5641, 5651, 5655, 5661, 5681, 5691, 5697, 5698, 5699, 5941]],
+  ['household', [5200, 5211, 5231, 5251, 5261, 5310, 5311, 5331, 5399, 5712, 5714, 5718, 5719, 5722, 5732, 5977, 5992]],
+  ['insurance', [5960, 6300]],
+];
+const MCC = new Map(MCC_RANGES.flatMap(([cat, codes]) => codes.map((code) => [String(code), cat])));
+
+export function kindOf(tx) {
+  if (isOwnAccountTransfer(tx.type)) return tx.amount < 0 ? 'saving' : 'saving_withdrawal';
+  return tx.amount < 0 ? 'expense' : 'income';
+}
+
+export function suggestCategory(tx) {
+  const kind = kindOf(tx);
+  if (kind === 'saving' || kind === 'saving_withdrawal') return kind;
+
+  const learned = userRules[ruleKey(tx)];
+  if (learned && categoryById(learned).kind === kind) return learned;
+
+  const text = [tx.merchant, tx.partner, tx.note, tx.legalTitle].filter(Boolean).join(' ');
+
+  if (kind === 'income') {
+    if (/MUNKABÉR|MUNKABER|BÉR|FIZETÉS/i.test(text)) return 'salary';
+    if (/KÁRTYA JÓVÁÍRÁS/i.test(tx.type)) return 'refund';
+    if (/kamat/i.test(tx.type)) return 'interest';
+    return 'other_income';
+  }
+
+  if (/TŐKETÖRLESZTÉS|KAMAT TERHELÉS/i.test(tx.type)) return 'loan';
+  for (const [cat, re] of KEYWORDS) if (re.test(text)) return cat;
+  if (tx.mcc && MCC.has(tx.mcc)) return MCC.get(tx.mcc);
+  return 'other';
+}
