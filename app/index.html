@@ -44,8 +44,10 @@
       <div id="tx-list"></div>
       <p id="empty-state" class="empty" hidden>
         Ebben a hónapban még nincs tétel.<br>
-        Tölts fel egy CIB kivonatot az <a href="#import">Importálás</a> fülön.
+        Tölts fel egy CIB kivonatot az <a href="#import">Importálás</a> fülön,
+        vagy adj hozzá egyet a <strong>+</strong> gombbal.
       </p>
+      <button type="button" id="add-btn" class="fab" aria-label="Új tétel">+</button>
     </section>
 
     <!-- Importálás -->
@@ -104,6 +106,65 @@
       </label>
       <div class="dlg-actions">
         <button value="cancel" class="btn">Mégse</button>
+        <button value="save" class="btn primary">Mentés</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="entry-dialog">
+    <form method="dialog" id="entry-form">
+      <h2 id="entry-heading">Új tétel</h2>
+
+      <div class="segmented" role="radiogroup" aria-label="Típus">
+        <label><input type="radio" name="kind" value="expense" checked><span>Kiadás</span></label>
+        <label><input type="radio" name="kind" value="income"><span>Bevétel</span></label>
+      </div>
+
+      <label class="field">
+        Összeg (Ft)
+        <input type="text" name="amount" inputmode="decimal" autocomplete="off" placeholder="pl. 4 990" required>
+      </label>
+      <label class="field">
+        Megnevezés
+        <input type="text" name="title" list="title-suggestions" autocomplete="off" placeholder="pl. Piac, Claude Pro" required>
+        <datalist id="title-suggestions"></datalist>
+      </label>
+      <label class="field">
+        Dátum
+        <input type="date" name="date" required>
+      </label>
+      <label class="field">
+        Kategória
+        <select name="category"></select>
+      </label>
+
+      <span class="field-label">Fizetés módja</span>
+      <div class="segmented" role="radiogroup" aria-label="Fizetés módja">
+        <label><input type="radio" name="payment" value="cash" checked><span>💵 Készpénz</span></label>
+        <label><input type="radio" name="payment" value="card"><span>💳 Kártya / utalás</span></label>
+      </div>
+      <p class="hint" id="payment-hint"></p>
+
+      <label class="field">
+        Ki?
+        <select name="person"></select>
+      </label>
+      <label class="field">
+        Megjegyzés (nem kötelező)
+        <input type="text" name="note" autocomplete="off">
+      </label>
+      <label class="check" id="repeat-row">
+        <input type="checkbox" name="repeat">
+        <span>Havonta ismétlődik (pl. előfizetés)</span>
+      </label>
+      <p class="hint" id="entry-status" hidden></p>
+
+      <div class="dlg-actions" id="entry-extra" hidden>
+        <button value="stop-repeat" class="btn" id="stop-repeat-btn" formnovalidate>Ismétlés leállítása</button>
+        <button value="delete" class="btn danger" formnovalidate>Törlés</button>
+      </div>
+      <div class="dlg-actions sticky-actions">
+        <button value="cancel" class="btn" formnovalidate>Mégse</button>
         <button value="save" class="btn primary">Mentés</button>
       </div>
     </form>

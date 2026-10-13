@@ -1,7 +1,7 @@
-// Screen logic: tabs, monthly list, PDF import, backup.
+// Screen logic: tabs, monthly list, manual entries, PDF import, backup.
 
 import * as store from './store.js';
-import { KINDS, categoryById, categoriesForKind } from './categories.js';
+import { KINDS, categoryById, categoriesForKind, isTransferKind, suggestForName } from './categories.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -12,6 +12,11 @@ const dateFmt = new Intl.DateTimeFormat('hu-HU', { year: 'numeric', month: '2-di
 
 const parseDate = (iso) => new Date(`${iso}T12:00:00`);
 const monthOf = (tx) => tx.date.slice(0, 7);
+
+function todayIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 const ui = { month: null, filter: 'all', openId: null, groups: new Map() };
 
@@ -59,7 +64,7 @@ function showView() {
 // ---------- Monthly list ----------
 
 function availableMonths() {
-  return [...new Set(store.allTransactions().map(monthOf))].sort();
+  return [...new Set(store.countedTransactions().map(monthOf))].sort();
 }
 
 function renderList() {
@@ -70,7 +75,7 @@ function renderList() {
   $('#month-prev').disabled = index <= 0;
   $('#month-next').disabled = index === -1 || index >= months.length - 1;
 
-  const inMonth = store.allTransactions().filter((t) => monthOf(t) === ui.month);
+  const inMonth = store.countedTransactions().filter((t) => monthOf(t) === ui.month);
   const total = (kind) => inMonth.filter((t) => t.kind === kind).reduce((s, t) => s + t.amount, 0);
   // `|| 0` turns -0 into 0, so an empty month shows "0 Ft" instead of "-0 Ft".
   $('#sum-income').textContent = huf.format(total('income') || 0);
@@ -117,12 +122,10 @@ function txRow(tx) {
   main.className = 'tx-main';
   const title = document.createElement('div');
   title.className = 'tx-title';
-  title.textContent = tx.title;
+  title.textContent = displayTitle(tx);
   const sub = document.createElement('div');
   sub.className = 'tx-sub';
-  sub.textContent = tx.isGroup
-    ? `${cat.label} · ${tx.items.length} db utalás`
-    : [cat.label, tx.cardLast4 && store.cardOwner(tx.cardLast4)].filter(Boolean).join(' · ');
+  sub.textContent = subtitle(tx, cat);
   main.append(title, sub);
 
   const amount = document.createElement('span');
@@ -133,7 +136,25 @@ function txRow(tx) {
   return row;
 }
 
+// A bank line found for a hand-typed entry shows the hand-typed name.
+function displayTitle(tx) {
+  const manual = tx.linkedManualId && store.getTransaction(tx.linkedManualId);
+  return manual ? manual.title : tx.title;
+}
+
+function subtitle(tx, cat) {
+  if (tx.isGroup) return `${cat.label} · ${tx.items.length} db utalás`;
+  if (tx.source === 'manual') {
+    let how = '💵 készpénz';
+    if (tx.payment === 'card') how = store.statementCovers(tx.date) ? '⚠️ nincs meg a kivonaton' : '💳 várja a kivonatot';
+    return [cat.label, tx.person, how, tx.recurringId && '🔁'].filter(Boolean).join(' · ');
+  }
+  return [cat.label, tx.cardLast4 && store.cardOwner(tx.cardLast4), tx.linkedManualId && '🔗 kézzel is felvéve']
+    .filter(Boolean).join(' · ');
+}
+
 function amountClass(tx) {
+  if (tx.kind === 'cash') return 'muted';
   if (tx.kind === 'saving' || tx.kind === 'saving_withdrawal') return 'save';
   return tx.amount < 0 ? 'neg' : 'pos';
 }
@@ -144,7 +165,7 @@ function openDetails(id) {
   const tx = ui.groups.get(id) ?? store.getTransaction(id);
   if (!tx) return;
   ui.openId = id;
-  $('#dlg-title').textContent = tx.title;
+  $('#dlg-title').textContent = displayTitle(tx);
   const amount = $('#dlg-amount');
   amount.textContent = huf.format(tx.amount);
   amount.className = `dlg-amount ${amountClass(tx)}`;
@@ -164,6 +185,8 @@ function openDetails(id) {
     tx.cardLast4 && ['Kártya', store.cardLabel(tx.cardLast4)],
     tx.originalAmount && ['Eredeti összeg', tx.originalAmount],
     tx.note && ['Közlemény', tx.note],
+    tx.linkedManualId && ['Kézzel felvéve', displayTitle(tx)],
+    tx.kind === 'cash' && ['Megjegyzés', 'Nem számít kiadásnak: a készpénzes vásárlásokat kézzel rögzítsd.'],
   ].filter(Boolean);
   $('#dlg-details').replaceChildren(...details.flatMap(([k, v]) => {
     const dt = document.createElement('dt');
@@ -176,7 +199,7 @@ function openDetails(id) {
   const select = $('#dlg-category');
   select.replaceChildren(...categoriesForKind(tx.kind).map((c) => new Option(`${c.icon} ${c.label}`, c.id)));
   select.value = tx.category;
-  const fixedKind = tx.kind === 'saving' || tx.kind === 'saving_withdrawal';
+  const fixedKind = isTransferKind(tx.kind);
   select.disabled = fixedKind;
   $('#dlg-remember').closest('label').hidden = fixedKind;
 
@@ -194,6 +217,122 @@ function saveDetails(event) {
     }
   }
   ui.openId = null;
+}
+
+// ---------- Manual entry dialog ----------
+
+const entryForm = () => $('#entry-form');
+let entryCategoryTouched = false;
+
+function fillSelect(select, options, value) {
+  select.replaceChildren(...options.map(([v, label]) => new Option(label, v)));
+  if (value !== undefined) select.value = value;
+}
+
+function refreshEntryCategories(keep) {
+  const form = entryForm();
+  const kind = form.kind.value;
+  const current = keep ?? form.category.value;
+  const options = categoriesForKind(kind).map((c) => [c.id, `${c.icon} ${c.label}`]);
+  fillSelect(form.category, options);
+  form.category.value = options.some(([id]) => id === current) ? current : suggestForName(form.title.value, kind);
+}
+
+function refreshPaymentHint() {
+  const form = entryForm();
+  $('#payment-hint').textContent = form.payment.value === 'card'
+    ? 'Ha később feltöltöd a bankkivonatot, az app megkeresi ezt a tételt, és csak egyszer számolja.'
+    : 'Készpénz: nem jelenik meg a bankkivonaton, ezért külön számolódik.';
+}
+
+function openEntry(id) {
+  const form = entryForm();
+  const tx = id ? store.getTransaction(id) : null;
+  form.reset();
+  ui.openId = id ?? null;
+  entryCategoryTouched = Boolean(tx);
+
+  $('#entry-heading').textContent = tx ? 'Tétel szerkesztése' : 'Új tétel';
+  form.kind.value = tx?.kind ?? 'expense';
+  form.amount.value = tx ? String(Math.abs(tx.amount)) : '';
+  form.title.value = tx?.title ?? '';
+  form.date.value = tx?.date ?? todayIso();
+  form.payment.value = tx?.payment ?? 'cash';
+  form.note.value = tx?.note ?? '';
+  fillSelect(form.person, store.people().map((p) => [p, p]), tx?.person ?? store.people()[0]);
+  if (tx?.person && form.person.value !== tx.person) {
+    form.person.append(new Option(tx.person, tx.person));
+    form.person.value = tx.person;
+  }
+  refreshEntryCategories(tx?.category ?? 'other');
+  if (!tx) form.category.value = 'other';
+  refreshPaymentHint();
+
+  $('#title-suggestions').replaceChildren(...store.manualTitles().slice(0, 30).map((t) => new Option(t)));
+
+  const rec = tx?.recurringId && store.getRecurring(tx.recurringId);
+  $('#repeat-row').hidden = Boolean(tx);
+  $('#entry-extra').hidden = !tx;
+  $('#stop-repeat-btn').hidden = !rec?.active;
+
+  const status = $('#entry-status');
+  const notes = [
+    rec && (rec.active ? '🔁 Havonta ismétlődő tétel. A változtatás csak erre a hónapra vonatkozik.' : '🔁 Az ismétlés le van állítva.'),
+    tx?.linkedBankId && '🔗 Megtalálva a bankkivonaton, ezért a banki tétel számít bele az összesítőbe.',
+    tx && tx.payment === 'card' && !tx.linkedBankId && store.statementCovers(tx.date)
+      && '⚠️ A feltöltött kivonaton nem találtam meg. Ellenőrizd a nevet, az összeget és a dátumot, különben kétszer számolódhat.',
+  ].filter(Boolean);
+  status.textContent = notes.join(' ');
+  status.hidden = notes.length === 0;
+
+  $('#entry-dialog').showModal();
+  if (!tx) form.amount.focus();
+}
+
+function parseAmountInput(text) {
+  const n = Number(text.replace(/\s/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.'));
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : NaN;
+}
+
+function saveEntry(event) {
+  const action = event.submitter?.value;
+  const form = entryForm();
+  const id = ui.openId;
+  ui.openId = null;
+
+  if (action === 'delete') {
+    if (!confirm('Biztosan törlöd ezt a tételt?')) { event.preventDefault(); ui.openId = id; return; }
+    store.deleteManual(id);
+    toast('Tétel törölve');
+  } else if (action === 'stop-repeat') {
+    const tx = store.getTransaction(id);
+    store.stopRecurring(tx.recurringId);
+    toast('Az ismétlés leállítva. A korábbi tételek megmaradnak.');
+  } else if (action === 'save') {
+    const amount = parseAmountInput(form.amount.value);
+    if (!(amount > 0)) {
+      event.preventDefault();
+      ui.openId = id;
+      toast('Adj meg egy 0-nál nagyobb összeget.');
+      form.amount.focus();
+      return;
+    }
+    const fields = {
+      kind: form.kind.value,
+      amount,
+      date: form.date.value,
+      title: form.title.value,
+      category: form.category.value,
+      payment: form.payment.value,
+      person: form.person.value,
+      note: form.note.value,
+    };
+    const tx = id ? store.updateManual(id, fields) : store.addManual(fields, form.repeat.checked);
+    if (!id && form.repeat.checked) store.ensureRecurring(todayIso());
+    ui.month = tx.date.slice(0, 7);
+    toast(tx.linkedBankId ? 'Mentve, és összekapcsolva a banki tétellel 🔗' : 'Mentve');
+  }
+  renderList();
 }
 
 // ---------- PDF import ----------
@@ -227,12 +366,12 @@ async function importPdfFiles(files) {
       const { meta, transactions, check } = parseCibStatement(pages);
       if (transactions.length === 0) throw new Error(check.problems[0] ?? 'Nem található tranzakció.');
 
-      const { added, skipped, saved } = store.addBankTransactions(transactions, {
+      const { added, skipped, linked, saved } = store.addBankTransactions(transactions, {
         file: file.name, periodFrom: meta.periodFrom, periodTo: meta.periodTo, ok: check.ok,
       });
       if (!saved) throw new Error('Nem sikerült menteni: megtelt a tárhely.');
       lastMonth = transactions.at(-1).date.slice(0, 7);
-      renderResult(box, file.name, meta, check, added, skipped);
+      renderResult(box, file.name, meta, check, added, skipped, linked);
     } catch (err) {
       box.className = 'result warn';
       box.textContent = `${file.name}: ${err.message || 'Hiba a beolvasás közben.'}`;
@@ -242,7 +381,7 @@ async function importPdfFiles(files) {
   renderHistory();
 }
 
-function renderResult(box, name, meta, check, added, skipped) {
+function renderResult(box, name, meta, check, added, skipped, linked) {
   box.className = `result ${check.ok ? 'ok' : 'warn'}`;
   const period = meta.periodFrom ? `${meta.periodFrom.replaceAll('-', '.')} – ${meta.periodTo.replaceAll('-', '.')}` : '';
   const strong = document.createElement('strong');
@@ -250,6 +389,7 @@ function renderResult(box, name, meta, check, added, skipped) {
   const lines = [
     period && `Időszak: ${period}`,
     `Új tétel: ${added}${skipped ? `, már meglévő (kihagyva): ${skipped}` : ''}`,
+    linked && `🔗 Kézzel felvett tételből megtalálva: ${linked}`,
     check.ok ? '✓ Az összegek egyeznek a kivonattal.' : '⚠️ Eltérés a kivonathoz képest:',
   ].filter(Boolean);
   box.replaceChildren(strong, ...lines.flatMap((l) => [document.createElement('br'), l]));
@@ -364,9 +504,30 @@ document.querySelector('.chips').addEventListener('click', (e) => {
 
 $('#tx-list').addEventListener('click', (e) => {
   const row = e.target.closest('.tx');
-  if (row) openDetails(row.dataset.id);
+  if (!row) return;
+  if (store.getTransaction(row.dataset.id)?.source === 'manual') openEntry(row.dataset.id);
+  else openDetails(row.dataset.id);
 });
 $('#tx-dialog form').addEventListener('submit', saveDetails);
+
+$('#add-btn').addEventListener('click', () => openEntry(null));
+entryForm().addEventListener('submit', saveEntry);
+entryForm().addEventListener('change', (e) => {
+  if (e.target.name === 'kind') refreshEntryCategories();
+  if (e.target.name === 'payment') refreshPaymentHint();
+  if (e.target.name === 'category') entryCategoryTouched = true;
+});
+entryForm().title.addEventListener('input', () => {
+  if (!entryCategoryTouched) entryForm().category.value = suggestForName(entryForm().title.value, entryForm().kind.value);
+});
+
+// Monthly repeats are added when the app opens or comes back to the screen.
+function addDueRepeats() {
+  if (store.ensureRecurring(todayIso()) && !$('#view-list').hidden) renderList();
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') addDueRepeats();
+});
 
 $('#pdf-input').addEventListener('change', async (e) => {
   const files = [...e.target.files];
@@ -392,4 +553,5 @@ if ('serviceWorker' in navigator && window.isSecureContext) {
 }
 navigator.storage?.persist?.().catch(() => {});
 
+store.ensureRecurring(todayIso());
 showView();

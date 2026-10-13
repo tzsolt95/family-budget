@@ -7,7 +7,11 @@ export const KINDS = {
   income: 'Bevétel',
   saving: 'Megtakarítás',
   saving_withdrawal: 'Megtakarítás feloldása',
+  cash: 'Készpénzfelvétel',
 };
+
+// Kinds that move money around without being real income or spending.
+export const isTransferKind = (kind) => kind === 'saving' || kind === 'saving_withdrawal' || kind === 'cash';
 
 export const CATEGORIES = [
   { id: 'food', label: 'Élelmiszer', icon: '🛒', kind: 'expense' },
@@ -28,6 +32,7 @@ export const CATEGORIES = [
   { id: 'other_income', label: 'Egyéb bevétel', icon: '💰', kind: 'income' },
   { id: 'saving', label: 'Megtakarítás', icon: '🐷', kind: 'saving' },
   { id: 'saving_withdrawal', label: 'Megtakarítás feloldása', icon: '🔓', kind: 'saving_withdrawal' },
+  { id: 'cash_withdrawal', label: 'Készpénzfelvétel', icon: '💵', kind: 'cash' },
 ];
 
 const BY_ID = new Map(CATEGORIES.map((c) => [c.id, c]));
@@ -70,14 +75,20 @@ const MCC_RANGES = [
 ];
 const MCC = new Map(MCC_RANGES.flatMap(([cat, codes]) => codes.map((code) => [String(code), cat])));
 
+// ATM withdrawals are not spending: the cash is spent later and entered by hand.
+const isCashWithdrawal = (tx) => tx.amount < 0
+  && (tx.mcc === '6011' || /KÉSZPÉNZ ?FELV|KESZPENZ ?FELV|\bATM\b/i.test(`${tx.type ?? ''} ${tx.merchant ?? ''}`));
+
 export function kindOf(tx) {
-  if (isOwnAccountTransfer(tx.type)) return tx.amount < 0 ? 'saving' : 'saving_withdrawal';
+  if (isOwnAccountTransfer(tx.type ?? '')) return tx.amount < 0 ? 'saving' : 'saving_withdrawal';
+  if (isCashWithdrawal(tx)) return 'cash';
   return tx.amount < 0 ? 'expense' : 'income';
 }
 
 export function suggestCategory(tx) {
   const kind = kindOf(tx);
   if (kind === 'saving' || kind === 'saving_withdrawal') return kind;
+  if (kind === 'cash') return 'cash_withdrawal';
 
   const learned = userRules[ruleKey(tx)];
   if (learned && categoryById(learned).kind === kind) return learned;
@@ -86,13 +97,19 @@ export function suggestCategory(tx) {
 
   if (kind === 'income') {
     if (/MUNKABÉR|MUNKABER|BÉR|FIZETÉS/i.test(text)) return 'salary';
-    if (/KÁRTYA JÓVÁÍRÁS/i.test(tx.type)) return 'refund';
-    if (/kamat/i.test(tx.type)) return 'interest';
+    if (/KÁRTYA JÓVÁÍRÁS/i.test(tx.type ?? '')) return 'refund';
+    if (/kamat/i.test(tx.type ?? '')) return 'interest';
     return 'other_income';
   }
 
-  if (/TŐKETÖRLESZTÉS|KAMAT TERHELÉS/i.test(tx.type)) return 'loan';
+  if (/TŐKETÖRLESZTÉS|KAMAT TERHELÉS/i.test(tx.type ?? '')) return 'loan';
   for (const [cat, re] of KEYWORDS) if (re.test(text)) return cat;
   if (tx.mcc && MCC.has(tx.mcc)) return MCC.get(tx.mcc);
   return 'other';
+}
+
+// Category guess for a hand-typed name, e.g. "Claude Pro" -> Előfizetések.
+export function suggestForName(name, kind) {
+  const guess = suggestCategory({ title: name, merchant: name, amount: kind === 'income' ? 1 : -1 });
+  return categoryById(guess).kind === kind ? guess : (kind === 'income' ? 'other_income' : 'other');
 }

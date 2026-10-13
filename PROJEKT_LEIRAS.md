@@ -5,7 +5,7 @@
 > és onnan folytathatod a munkát.
 
 **Létrehozva:** 2026. október 12.
-**Állapot:** az 1. lépés kész (CIB PDF beolvasás és tétellista). Következik: kézi bevitel.
+**Állapot:** az 1. és 2. lépés kész (CIB PDF beolvasás, kézi bevitel). Következik: blokkok beillesztése.
 
 ---
 
@@ -39,8 +39,16 @@ Az app három forrásból gyűjti össze a pénzmozgásokat, és **semmit nem sz
 
 - **Blokk ↔ banki tétel:** az app **dátum + összeg + bolt** alapján összepárosítja őket.
   Ilyenkor a banki tételt nem számolja újra, hanem a blokk tételei szerint bontja fel.
-- **Kézi bevitel ↔ banki tétel:** ugyanígy párosítva (pl. egy kézzel felvitt előfizetés).
-- **Készpénzes blokk:** önálló kiadás, nincs mihez párosítani (nem jelenik meg a kivonaton).
+- **Kézi bevitel ↔ banki tétel:** csak a **„Kártya / utalás”** módon fizetett kézi tételeknél.
+  Az app automatikusan összekapcsolja őket, ha:
+  - az összeg **pontosan egyezik**, és legfeljebb **±3 nap** az eltérés, **vagy**
+  - a **név egyezik** (pl. „Netflix” ↔ „NETFLIX.COM”), az összeg legfeljebb **50%-kal** tér el
+    (árváltozás, devizás fizetés), és legfeljebb **±7 nap** az eltérés.
+  Összekapcsolás után **a banki tétel számít** (a valódi összeggel), a kézi tétel neve és kategóriája látszik rajta.
+  Ha a kivonat már fel van töltve, de nincs találat, a tételnél **⚠️ figyelmeztetés** jelenik meg.
+- **Készpénzfelvétel (ATM):** címke: **„Készpénzfelvétel”**, **nem számít kiadásnak**,
+  mert a készpénzből vásárolt dolgokat kézzel rögzítjük (különben kétszer számolódna).
+- **Készpénzes blokk / kézi tétel:** önálló kiadás, nincs mihez párosítani (nem jelenik meg a kivonaton).
 - **Átutalás a fő számláról az alszámlára:** címke: **„Megtakarítás”**.
 - **Átutalás az alszámláról a fő számlára:** címke: **„Megtakarítás feloldása”**.
 - **A megtakarítás nem számít bele a havi kiadásokba**, de a hó végi kimutatásban
@@ -66,6 +74,18 @@ nagy tételek voltak.
 2. Ha a bolt neve ismert (pl. SPAR, Wolt, DM, MVM), akkor az alapján.
 3. Különben a bank által minden kártyás vásárláshoz megadott **bolttípus-kód (MCC)** alapján.
 4. Ha semmi nem illik rá: Egyéb.
+
+---
+
+## 4/b. Kézi bevitel (2. lépés)
+
+- A **Tételek** fülön a jobb alsó **+** gombbal.
+- Mezők: Kiadás/Bevétel, összeg, megnevezés, dátum, kategória (a név alapján az app javasol),
+  fizetés módja (**💵 Készpénz** vagy **💳 Kártya / utalás**), ki (a kártyákhoz beírt nevek + „Közös”), megjegyzés.
+- **Havonta ismétlődik:** pl. előfizetéseknél. Az app minden hónapban automatikusan felveszi,
+  amikor eljön a napja. Egy havi példány törlése nem hozza vissza azt a hónapot;
+  az **„Ismétlés leállítása”** gombbal megállítható (a régi tételek megmaradnak).
+- Kézi tételre koppintva **szerkeszthető** vagy **törölhető**.
 
 ---
 
@@ -176,6 +196,9 @@ címre. Átköltözéskor használd a „Biztonsági mentés letöltése” és 
   hibátlanul beolvasva, az egyenlegek centre egyeznek.
 - **2026. 10. 12. – kiegészítés:** kártyák neve (ki fizetett), Revolut feltöltés címke,
   automatikus megtakarítások napi összevonása (szeptemberben 209 sor helyett 153).
+- **2026. 10. 13. – 2. lépés kész:** kézi bevitel (+ gomb), készpénz / kártya, havonta ismétlődő tételek,
+  automatikus összekapcsolás a banki tétellel, ⚠️ jelzés ha nincs meg a kivonaton, ATM-készpénzfelvétel
+  külön címkével (nem kiadás).
 - **2026. 10. 13. – az app élesben:** feltöltve a GitHubra (`tzsolt95/family-budget`),
   és elérhető a https://tzsolt95.github.io/family-budget/ címen.
 
@@ -199,12 +222,13 @@ címre. Átköltözéskor használd a „Biztonsági mentés letöltése” és 
 
 ~~1. lépés: a CIB PDF feltöltése, és a tranzakciók listázása javasolt kategóriákkal.~~ ✓ kész
 
+~~2. lépés: Kézi bevitel (készpénz, előfizetés)~~ ✓ kész
+
 Utána sorban:
-2. Kézi bevitel (készpénz, előfizetés)
-3. Blokk beillesztése és tételekre bontása
-4. Párosítás (duplikációk kiszűrése)
+3. **Blokk beillesztése és tételekre bontása** ← következik
+4. Párosítás: blokk ↔ banki tétel (a kézi tétel ↔ banki tétel párosítás már kész)
 5. Hó végi grafikonok
-6. Mentés/exportálás
+6. ~~Mentés/exportálás~~ ✓ kész (az 1. lépéssel együtt)
 7. ~~Feltöltés tárhelyre~~ ✓ kész, telepítés az iPhone-ra
 8. 2. fázis: Supabase, közös használat a feleséggel
 9. Később: Revolut kivonatok importálása

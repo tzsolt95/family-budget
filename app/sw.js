@@ -1,5 +1,5 @@
 // Offline support: always try the network first, fall back to the saved copy.
-const CACHE = 'kassza-v2';
+const CACHE = 'kassza-v3';
 const FILES = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
   'js/app.js', 'js/store.js', 'js/categories.js', 'js/cib-parser.js', 'js/pdf-text.js',
