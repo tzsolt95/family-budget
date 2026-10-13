@@ -1,15 +1,20 @@
 // Keeps all data in the phone's local storage (phase 1: no cloud).
 
-import { kindOf, suggestCategory, setUserRules, ruleKey } from './categories.js';
+import { kindOf, suggestCategory, setUserRules, ruleKey, setItemRules, itemRuleKey } from './categories.js';
 
 const KEY = 'csaladi-kassza.v1';
 
 function emptyState() {
-  return { version: 1, transactions: {}, rules: {}, imports: [], cardOwners: {}, recurring: {} };
+  return { version: 1, transactions: {}, rules: {}, imports: [], cardOwners: {}, recurring: {}, itemRules: {} };
 }
 
 let state = load();
-setUserRules(state.rules);
+applyRules();
+
+function applyRules() {
+  setUserRules(state.rules);
+  setItemRules(state.itemRules);
+}
 
 function load() {
   try {
@@ -165,8 +170,12 @@ function linkPendingManual() {
   return linked;
 }
 
-// fields: { kind, amount (positive number), date, title, category, payment, person, note }
+// fields: { kind, amount (positive number), date, title, category, payment, person, note, items? }
+// A receipt is a manual entry with `items`: [{ name, amount, category }].
 function buildManual(fields, id, recurringId) {
+  const items = fields.items?.length
+    ? fields.items.map((i) => ({ name: i.name.trim(), amount: Math.abs(i.amount), category: i.category }))
+    : undefined;
   return {
     id,
     source: 'manual',
@@ -181,11 +190,42 @@ function buildManual(fields, id, recurringId) {
     person: fields.person,
     note: fields.note?.trim() || undefined,
     recurringId,
+    items,
   };
+}
+
+// Remembers every item's category, so the same product is sorted the same way next time.
+function rememberItems(items) {
+  for (const item of items ?? []) {
+    const key = itemRuleKey(item.name);
+    if (key) state.itemRules[key] = item.category;
+  }
+}
+
+// The biggest category on a receipt is shown as the receipt's own category.
+export function mainCategory(items) {
+  const totals = {};
+  for (const i of items) totals[i.category] = (totals[i.category] ?? 0) + i.amount;
+  return Object.entries(totals).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'other';
+}
+
+// Splits an item into category amounts (negative for spending). A bank line found for
+// a receipt is split like the receipt; any difference stays in the main category.
+export function categoryParts(tx) {
+  const receipt = tx.items ? tx : (tx.linkedManualId && state.transactions[tx.linkedManualId]);
+  if (!receipt?.items?.length) return [{ category: tx.category, amount: tx.amount }];
+  const sign = tx.amount < 0 ? -1 : 1;
+  const totals = {};
+  for (const i of receipt.items) totals[i.category] = (totals[i.category] ?? 0) + sign * i.amount;
+  const itemsSum = Object.values(totals).reduce((a, b) => a + b, 0);
+  const main = mainCategory(receipt.items);
+  totals[main] = Math.round((totals[main] + (tx.amount - itemsSum)) * 100) / 100;
+  return Object.entries(totals).map(([category, amount]) => ({ category, amount }));
 }
 
 export function addManual(fields, repeatMonthly) {
   const id = newId('man');
+  rememberItems(fields.items);
   let recurringId;
   if (repeatMonthly) {
     recurringId = newId('rec');
@@ -213,6 +253,7 @@ export function updateManual(id, fields) {
   const old = state.transactions[id];
   if (!old || old.source !== 'manual') return null;
   unlink(old);
+  rememberItems(fields.items);
   const tx = buildManual(fields, id, old.recurringId);
   state.transactions[id] = tx;
   if (tx.payment === 'card') {
@@ -315,14 +356,15 @@ export function restoreBackup(text) {
     imports: data.imports ?? [],
     cardOwners: data.cardOwners ?? {},
     recurring: data.recurring ?? {},
+    itemRules: data.itemRules ?? {},
   };
-  setUserRules(state.rules);
+  applyRules();
   save();
   return Object.keys(state.transactions).length;
 }
 
 export function clearAll() {
   state = emptyState();
-  setUserRules(state.rules);
+  applyRules();
   save();
 }

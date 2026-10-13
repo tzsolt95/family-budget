@@ -5,7 +5,7 @@
 > és onnan folytathatod a munkát.
 
 **Létrehozva:** 2026. október 12.
-**Állapot:** az 1. és 2. lépés kész (CIB PDF beolvasás, kézi bevitel). Következik: blokkok beillesztése.
+**Állapot:** az 1–3. lépés kész (CIB PDF, kézi bevitel, blokkok). Következik: hó végi grafikonok.
 
 ---
 
@@ -89,6 +89,27 @@ nagy tételek voltak.
 
 ---
 
+## 4/c. Blokkok (3. lépés)
+
+1. iPhone **Fotók** → a blokk fotója → **Élő szöveg** ikon → **Összes kijelölése → Másolás**.
+2. Az appban: **+ → Blokk beillesztése** → **Beillesztés a vágólapról** → **Feldolgozás**.
+3. Az app felismeri: **bolt, dátum, fizetés módja, tételek, árak, végösszeg**.
+   - A **kedvezmény** a fölötte lévő tételből levonódik, a **visszaváltási díj** a fölötte lévő italhoz adódik.
+   - Ha a blokk széles, és az Élő szöveg külön adja a neveket és az árakat, azt is kezeli.
+4. **Ellenőrző képernyő:** minden szerkeszthető (név, ár, kategória, törlés, új tétel).
+   Zöld ✓, ha a tételek összege egyezik a végösszeggel; ⚠️, ha nem.
+   Ha a tételekből hiányzik valamennyi, „Egyéb tétel” sorként felvehető.
+5. **Tételenkénti kategória:** termékszavak alapján (pl. TEJ → Élelmiszer, MOSÓPOR → Háztartás),
+   különben a bolt kategóriája. **Az app megjegyzi**, amit mentéskor beállítottál.
+6. **Kártyás blokk:** összekapcsolódik a banki tétellel (ugyanaz a szabály, mint a kézi tételeknél),
+   és a banki tétel a blokk kategóriái szerint **oszlik meg** (pl. 16 633 Ft SPAR =
+   13 143 Ft Élelmiszer + 3 490 Ft Háztartás). **Készpénzes blokk:** önállóan számít.
+
+⚠️ A blokkolvasót kitalált minta-blokkokon teszteltük (`tools/receipt-samples/`). Valódi blokkok
+szövegével tovább pontosítható: ilyenkor a valódi szöveget **nem** tesszük a projektbe, csak a mintáját.
+
+---
+
 ## 5. Hó végi kimutatás (grafikonok) – elfogadva
 
 - **Összesítő kártyák:** összes bevétel, összes kiadás, megtakarítás, maradék pénz
@@ -159,11 +180,13 @@ Nem kell otthoni szerver, és nem kell az App Store sem.
 | `app/` | Maga az app: ez kerül fel a telefonra / a tárhelyre |
 | `app/index.html`, `app/styles.css` | A képernyők és a kinézet |
 | `app/js/cib-parser.js` | A CIB PDF kivonat beolvasása és ellenőrzése |
-| `app/js/categories.js` | Kategóriák és a besorolási szabályok |
+| `app/js/categories.js` | Kategóriák és a besorolási szabályok (bankkivonat és blokk-tételek) |
+| `app/js/receipt-parser.js` | A blokk szövegének beolvasása (bolt, dátum, tételek, végösszeg) |
 | `app/js/store.js` | Adatok mentése a telefonon, biztonsági mentés |
 | `app/js/app.js` | A képernyők működése |
 | `app/vendor/pdfjs/` | Ingyenes PDF-olvasó könyvtár (pdf.js) |
 | `tools/check-statement.mjs` | Fejlesztői ellenőrzés: beolvas egy kivonatot, és megnézi, egyeznek-e az összegek |
+| `tools/test-receipts.mjs` | Fejlesztői ellenőrzés a minta-blokkokkal (`node tools/test-receipts.mjs`) |
 
 ### Indítás tesztelésre (Mac + iPhone, ugyanazon a Wi-Fi-n)
 1. Terminálban, ebben a mappában: `npm start`
@@ -196,6 +219,9 @@ címre. Átköltözéskor használd a „Biztonsági mentés letöltése” és 
   hibátlanul beolvasva, az egyenlegek centre egyeznek.
 - **2026. 10. 12. – kiegészítés:** kártyák neve (ki fizetett), Revolut feltöltés címke,
   automatikus megtakarítások napi összevonása (szeptemberben 209 sor helyett 153).
+- **2026. 10. 13. – 3. lépés kész:** blokk beillesztése (Élő szöveg), automatikus felismerés,
+  ellenőrző képernyő, tételenkénti kategória memóriával, kártyás blokk ↔ banki tétel összekapcsolás
+  és megosztás kategóriák szerint.
 - **2026. 10. 13. – 2. lépés kész:** kézi bevitel (+ gomb), készpénz / kártya, havonta ismétlődő tételek,
   automatikus összekapcsolás a banki tétellel, ⚠️ jelzés ha nincs meg a kivonaton, ATM-készpénzfelvétel
   külön címkével (nem kiadás).
@@ -208,6 +234,7 @@ címre. Átköltözéskor használd a „Biztonsági mentés letöltése” és 
 
 - [x] A megtakarítás nem számít kiadásnak, de külön szakaszt kap. *(megerősítve)*
 - [x] A grafikonok javasolt listája elfogadva. *(megerősítve)*
+- [ ] Valódi blokkszövegek (SPAR/Tesco/Lidl + egy kis bolt) a blokkolvasó pontosításához.
 - [x] Tárhely: **GitHub Pages**, nyilvános tárolóval (repo). *(döntés: 2026. 10. 13.)*
 - [x] Két kártya van a számlán: az egyik Zsolté, a másik a feleségéé. A neveket az appban,
   az Importálás fülön a **Kártyák** résznél kell beírni (a kártyaszámok szándékosan nincsenek a kódban).
@@ -225,9 +252,9 @@ címre. Átköltözéskor használd a „Biztonsági mentés letöltése” és 
 ~~2. lépés: Kézi bevitel (készpénz, előfizetés)~~ ✓ kész
 
 Utána sorban:
-3. **Blokk beillesztése és tételekre bontása** ← következik
-4. Párosítás: blokk ↔ banki tétel (a kézi tétel ↔ banki tétel párosítás már kész)
-5. Hó végi grafikonok
+3. ~~Blokk beillesztése és tételekre bontása~~ ✓ kész
+4. ~~Párosítás: blokk ↔ banki tétel~~ ✓ kész (a 3. lépéssel együtt)
+5. **Hó végi grafikonok** ← következik
 6. ~~Mentés/exportálás~~ ✓ kész (az 1. lépéssel együtt)
 7. ~~Feltöltés tárhelyre~~ ✓ kész, telepítés az iPhone-ra
 8. 2. fázis: Supabase, közös használat a feleséggel

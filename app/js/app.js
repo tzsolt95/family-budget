@@ -1,7 +1,8 @@
-// Screen logic: tabs, monthly list, manual entries, PDF import, backup.
+// Screen logic: tabs, monthly list, manual entries, receipts, PDF import, backup.
 
 import * as store from './store.js';
-import { KINDS, categoryById, categoriesForKind, isTransferKind, suggestForName } from './categories.js';
+import { KINDS, categoryById, categoriesForKind, isTransferKind, suggestForName, suggestItemCategory } from './categories.js';
+import { parseReceipt, parsePrice } from './receipt-parser.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -147,9 +148,12 @@ function subtitle(tx, cat) {
   if (tx.source === 'manual') {
     let how = '💵 készpénz';
     if (tx.payment === 'card') how = store.statementCovers(tx.date) ? '⚠️ nincs meg a kivonaton' : '💳 várja a kivonatot';
-    return [cat.label, tx.person, how, tx.recurringId && '🔁'].filter(Boolean).join(' · ');
+    const what = tx.items ? `🧾 ${tx.items.length} tétel` : cat.label;
+    return [what, tx.person, how, tx.recurringId && '🔁'].filter(Boolean).join(' · ');
   }
-  return [cat.label, tx.cardLast4 && store.cardOwner(tx.cardLast4), tx.linkedManualId && '🔗 kézzel is felvéve']
+  const receipt = tx.linkedManualId && store.getTransaction(tx.linkedManualId)?.items;
+  return [receipt ? `🧾 ${receipt.length} tétel` : cat.label, tx.cardLast4 && store.cardOwner(tx.cardLast4),
+    tx.linkedManualId && (receipt ? '🔗 blokkal' : '🔗 kézzel is felvéve')]
     .filter(Boolean).join(' · ');
 }
 
@@ -194,6 +198,20 @@ function openDetails(id) {
     const dd = document.createElement('dd');
     dd.textContent = v;
     return [dt, dd];
+  }));
+
+  const parts = tx.isGroup ? [] : store.categoryParts(tx);
+  const partsList = $('#dlg-parts');
+  partsList.hidden = parts.length < 2;
+  partsList.replaceChildren(...parts.map((part) => {
+    const li = document.createElement('li');
+    const c = categoryById(part.category);
+    const name = document.createElement('span');
+    name.textContent = `${c.icon} ${c.label}`;
+    const value = document.createElement('span');
+    value.textContent = huf.format(part.amount);
+    li.append(name, value);
+    return li;
   }));
 
   const select = $('#dlg-category');
@@ -332,6 +350,163 @@ function saveEntry(event) {
     ui.month = tx.date.slice(0, 7);
     toast(tx.linkedBankId ? 'Mentve, és összekapcsolva a banki tétellel 🔗' : 'Mentve');
   }
+  renderList();
+}
+
+// ---------- Receipt dialog ----------
+
+const receiptForm = () => $('#receipt-form');
+
+function showReceiptStep(step) {
+  $('#receipt-step-paste').hidden = step !== 'paste';
+  $('#receipt-step-check').hidden = step !== 'check';
+}
+
+function openReceipt(id) {
+  const form = receiptForm();
+  const tx = id ? store.getTransaction(id) : null;
+  form.reset();
+  ui.openId = id ?? null;
+  $('#receipt-heading').textContent = tx ? 'Blokk szerkesztése' : 'Blokk beillesztése';
+  $('#receipt-extra').hidden = !tx;
+  fillSelect(form.person, store.people().map((p) => [p, p]), tx?.person ?? store.people()[0]);
+  if (tx) {
+    fillReceipt({ shop: tx.title, date: tx.date, payment: tx.payment, total: Math.abs(tx.amount), items: tx.items }, true);
+    showReceiptStep('check');
+  } else {
+    showReceiptStep('paste');
+  }
+  const status = $('#receipt-status');
+  status.textContent = tx?.linkedBankId ? '🔗 Megtalálva a bankkivonaton: a banki tétel a blokk kategóriái szerint oszlik meg.' : '';
+  status.hidden = !tx?.linkedBankId;
+  $('#receipt-dialog').showModal();
+}
+
+function itemRow(item) {
+  const row = document.createElement('div');
+  row.className = 'item-row';
+  const name = document.createElement('input');
+  name.className = 'item-name';
+  name.value = item.name ?? '';
+  name.placeholder = 'Megnevezés';
+  const amount = document.createElement('input');
+  amount.className = 'item-amount';
+  amount.inputMode = 'decimal';
+  amount.value = item.amount ? String(item.amount) : '';
+  amount.placeholder = 'Ft';
+  const select = document.createElement('select');
+  select.className = 'item-cat';
+  fillSelect(select, categoriesForKind('expense').map((c) => [c.id, `${c.icon} ${c.label}`]), item.category);
+  const del = document.createElement('button');
+  del.type = 'button';
+  del.className = 'item-del';
+  del.setAttribute('aria-label', 'Tétel törlése');
+  del.textContent = '✕';
+  row.append(name, amount, del, select);
+  return row;
+}
+
+function fillReceipt(data, keepCategories) {
+  const form = receiptForm();
+  form.shop.value = data.shop ?? '';
+  form.date.value = data.date ?? todayIso();
+  form.total.value = data.total ? String(data.total) : '';
+  form.payment.value = data.payment ?? 'card';
+  const shopCategory = suggestForName(form.shop.value, 'expense');
+  const items = data.items?.length ? data.items : [{ name: '', amount: 0 }];
+  $('#receipt-items').replaceChildren(...items.map((i) => itemRow({
+    ...i,
+    category: keepCategories && i.category ? i.category : suggestItemCategory(i.name, shopCategory),
+  })));
+  updateReceiptCheck();
+}
+
+function readItemRows() {
+  return [...document.querySelectorAll('#receipt-items .item-row')].map((row) => ({
+    name: row.querySelector('.item-name').value.trim(),
+    amount: parsePrice(row.querySelector('.item-amount').value || '0'),
+    category: row.querySelector('.item-cat').value,
+  }));
+}
+
+function updateReceiptCheck() {
+  const items = readItemRows().filter((i) => i.amount > 0);
+  const sum = Math.round(items.reduce((s, i) => s + i.amount, 0) * 100) / 100;
+  const total = parsePrice(receiptForm().total.value || '0');
+  const diff = Math.round((total - sum) * 100) / 100;
+  const ok = diff === 0 && total > 0;
+  const el = $('#receipt-check');
+  el.className = `receipt-check ${ok ? 'ok' : 'warn'}`;
+  el.textContent = ok
+    ? `✓ A tételek összege egyezik a végösszeggel: ${huf.format(sum)}`
+    : `⚠️ Tételek összesen: ${huf.format(sum)} · Végösszeg: ${huf.format(total || 0)} · Eltérés: ${huf.format(diff || 0)}`;
+}
+
+async function pasteFromClipboard() {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text) receiptForm().text.value = text;
+    else toast('A vágólap üres. Másold ki előbb a blokk szövegét.');
+  } catch {
+    toast('Nem sikerült beilleszteni. Nyomd hosszan a szövegmezőt → Beillesztés.');
+  }
+}
+
+function readReceiptText() {
+  const text = receiptForm().text.value;
+  if (!text.trim()) {
+    toast('Előbb illeszd be a blokk szövegét.');
+    return;
+  }
+  const parsed = parseReceipt(text);
+  fillReceipt(parsed, false);
+  showReceiptStep('check');
+  if (!parsed.items.length) toast('Nem találtam tételeket. Írd be őket kézzel, vagy csak a végösszeget.');
+  $('#receipt-dialog').scrollTop = 0;
+}
+
+function saveReceipt(event) {
+  const action = event.submitter?.value;
+  const form = receiptForm();
+  const id = ui.openId;
+  const keepOpen = (message) => {
+    event.preventDefault();
+    if (message) toast(message);
+  };
+
+  if (action === 'delete') {
+    if (!confirm('Biztosan törlöd ezt a blokkot?')) return keepOpen();
+    store.deleteManual(id);
+    toast('Blokk törölve');
+  } else if (action === 'save') {
+    const total = parsePrice(form.total.value || '0');
+    if (!(total > 0)) return keepOpen('Add meg a blokk végösszegét.');
+    let items = readItemRows().filter((i) => i.amount > 0);
+    for (const i of items) if (!i.name) i.name = categoryById(i.category).label;
+    const sum = Math.round(items.reduce((s, i) => s + i.amount, 0) * 100) / 100;
+    const diff = Math.round((total - sum) * 100) / 100;
+    if (diff < 0) return keepOpen('A tételek összege több, mint a végösszeg. Javítsd a tételeket vagy a végösszeget.');
+    if (diff > 0) {
+      const ok = items.length === 0 || confirm(`A tételekből ${huf.format(diff)} hiányzik. Felvegyem „Egyéb tétel” néven?`);
+      if (!ok) return keepOpen();
+      const category = items.length ? 'other' : suggestForName(form.shop.value, 'expense');
+      items = [...items, { name: 'Egyéb tétel', amount: diff, category }];
+    }
+    const fields = {
+      kind: 'expense',
+      amount: total,
+      date: form.date.value,
+      title: form.shop.value.trim() || 'Blokk',
+      category: store.mainCategory(items),
+      payment: form.payment.value,
+      person: form.person.value,
+      items,
+    };
+    const tx = id ? store.updateManual(id, fields) : store.addManual(fields, false);
+    ui.month = tx.date.slice(0, 7);
+    toast(tx.linkedBankId ? 'Blokk mentve, és összekapcsolva a banki tétellel 🔗' : 'Blokk mentve');
+  }
+  ui.openId = null;
   renderList();
 }
 
@@ -505,12 +680,37 @@ document.querySelector('.chips').addEventListener('click', (e) => {
 $('#tx-list').addEventListener('click', (e) => {
   const row = e.target.closest('.tx');
   if (!row) return;
-  if (store.getTransaction(row.dataset.id)?.source === 'manual') openEntry(row.dataset.id);
+  const tx = store.getTransaction(row.dataset.id);
+  const linkedReceipt = tx?.linkedManualId && store.getTransaction(tx.linkedManualId);
+  if (tx?.items) openReceipt(tx.id);
+  else if (linkedReceipt?.items) openReceipt(linkedReceipt.id);
+  else if (tx?.source === 'manual') openEntry(tx.id);
   else openDetails(row.dataset.id);
 });
 $('#tx-dialog form').addEventListener('submit', saveDetails);
 
-$('#add-btn').addEventListener('click', () => openEntry(null));
+$('#add-btn').addEventListener('click', () => $('#add-dialog').showModal());
+$('#add-dialog form').addEventListener('submit', (e) => {
+  if (e.submitter?.value === 'manual') openEntry(null);
+  if (e.submitter?.value === 'receipt') openReceipt(null);
+});
+receiptForm().addEventListener('submit', saveReceipt);
+$('#receipt-paste-btn').addEventListener('click', pasteFromClipboard);
+$('#receipt-read-btn').addEventListener('click', readReceiptText);
+$('#receipt-add-item').addEventListener('click', () => {
+  const row = itemRow({ name: '', amount: 0, category: suggestForName(receiptForm().shop.value, 'expense') });
+  $('#receipt-items').append(row);
+  row.querySelector('.item-name').focus();
+  updateReceiptCheck();
+});
+$('#receipt-items').addEventListener('click', (e) => {
+  if (!e.target.closest('.item-del')) return;
+  e.target.closest('.item-row').remove();
+  updateReceiptCheck();
+});
+receiptForm().addEventListener('input', (e) => {
+  if (e.target.matches('.item-amount, [name=total]')) updateReceiptCheck();
+});
 entryForm().addEventListener('submit', saveEntry);
 entryForm().addEventListener('change', (e) => {
   if (e.target.name === 'kind') refreshEntryCategories();

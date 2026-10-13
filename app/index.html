@@ -96,6 +96,7 @@
       <h2 id="dlg-title"></h2>
       <p id="dlg-amount" class="dlg-amount"></p>
       <dl id="dlg-details" class="details"></dl>
+      <ul id="dlg-parts" class="parts" hidden></ul>
       <label class="field">
         Kategória
         <select id="dlg-category"></select>
@@ -166,6 +167,79 @@
       <div class="dlg-actions sticky-actions">
         <button value="cancel" class="btn" formnovalidate>Mégse</button>
         <button value="save" class="btn primary">Mentés</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="add-dialog">
+    <form method="dialog" class="add-choices">
+      <h2>Mit szeretnél felvenni?</h2>
+      <button value="manual" class="btn choice"><span>✍️</span>Kézi tétel<small>készpénz, előfizetés, bevétel</small></button>
+      <button value="receipt" class="btn choice"><span>🧾</span>Blokk beillesztése<small>a blokk fotójáról másolt szöveg</small></button>
+      <button value="cancel" class="btn">Mégse</button>
+    </form>
+  </dialog>
+
+  <dialog id="receipt-dialog">
+    <form method="dialog" id="receipt-form">
+      <h2 id="receipt-heading">Blokk beillesztése</h2>
+
+      <div id="receipt-step-paste">
+        <ol class="howto">
+          <li>Nyisd meg a blokk fotóját a <strong>Fotók</strong> appban.</li>
+          <li>Koppints a jobb alsó <strong>Élő szöveg</strong> ikonra, majd: <strong>Összes kijelölése → Másolás</strong>.</li>
+          <li>Gyere vissza ide, és illeszd be.</li>
+        </ol>
+        <button type="button" id="receipt-paste-btn" class="btn">📋 Beillesztés a vágólapról</button>
+        <label class="field">
+          A blokk szövege
+          <textarea name="text" rows="8" placeholder="Ide is beillesztheted (hosszan nyomva → Beillesztés)"></textarea>
+        </label>
+        <div class="dlg-actions sticky-actions">
+          <button value="cancel" class="btn" formnovalidate>Mégse</button>
+          <button type="button" id="receipt-read-btn" class="btn primary">Feldolgozás</button>
+        </div>
+      </div>
+
+      <div id="receipt-step-check" hidden>
+        <label class="field">
+          Bolt
+          <input type="text" name="shop" autocomplete="off" required>
+        </label>
+        <div class="row-2">
+          <label class="field">
+            Dátum
+            <input type="date" name="date" required>
+          </label>
+          <label class="field">
+            Végösszeg (Ft)
+            <input type="text" name="total" inputmode="decimal" autocomplete="off" required>
+          </label>
+        </div>
+
+        <span class="field-label">Fizetés módja</span>
+        <div class="segmented" role="radiogroup" aria-label="Fizetés módja">
+          <label><input type="radio" name="payment" value="card" checked><span>💳 Kártya</span></label>
+          <label><input type="radio" name="payment" value="cash"><span>💵 Készpénz</span></label>
+        </div>
+        <label class="field">
+          Ki?
+          <select name="person"></select>
+        </label>
+
+        <span class="field-label">Tételek</span>
+        <div id="receipt-items" class="receipt-items"></div>
+        <button type="button" id="receipt-add-item" class="btn">+ Tétel hozzáadása</button>
+        <p id="receipt-check" class="receipt-check"></p>
+        <p class="hint" id="receipt-status" hidden></p>
+
+        <div class="dlg-actions" id="receipt-extra" hidden>
+          <button value="delete" class="btn danger" formnovalidate>Blokk törlése</button>
+        </div>
+        <div class="dlg-actions sticky-actions">
+          <button value="cancel" class="btn" formnovalidate>Mégse</button>
+          <button value="save" class="btn primary">Mentés</button>
+        </div>
       </div>
     </form>
   </dialog>

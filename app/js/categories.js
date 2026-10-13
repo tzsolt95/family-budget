@@ -113,3 +113,32 @@ export function suggestForName(name, kind) {
   const guess = suggestCategory({ title: name, merchant: name, amount: kind === 'income' ? 1 : -1 });
   return categoryById(guess).kind === kind ? guess : (kind === 'income' ? 'other_income' : 'other');
 }
+
+// ---------- Receipt items ----------
+
+const plainUpper = (text) => (text ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+
+// Product words seen on Hungarian receipts (accents removed, so "KENYÉR" and "KENYER" both match).
+const ITEM_KEYWORDS = [
+  ['household', /(MOSOPOR|MOSOGEL|MOSOSZER|OBLITO|MOSOGAT|TISZTITO|SUROLO|FERTOTLEN|HYPO|WC|TOALETT|PAPIR ?ZSEBKENDO|ZSEBKENDO|SZALVETA|KONYHAI ?TEKERCS|PAPIRTORLO|SZEMETES|ZSAK|FOLIA|ALUFOLIA|SUTOPAPIR|ELEM\b|IZZO|GYERTYA|PELENKA|PAMPERS|TORLOKENDO|SAMPON|BALZSAM|TUSFURDO|SZAPPAN|FOGKREM|FOGKEFE|DEZODOR|DEO\b|BOROTVA|VATTA|TAMPON|BETET|TESTAPOLO|KREM\b|SZIVACS|ZACSKO|SZATYOR|TASAK|REKLAMSZATYOR)/],
+  ['health', /(VITAMIN|TABLETTA|KAPSZULA|GYOGY|SEBTAPASZ|TAPASZ|LAZCSILLAPITO|FAJDALOM|ORRSPRAY|SZEMCSEPP)/],
+  ['clothing', /(ZOKNI|POLO|HARISNYA|ALSONADRAG|NADRAG|PULOVER|SAPKA|KESZTYU|CIPO|PAPUCS)/],
+  ['entertainment', /(JATEK|LEGO|KONYV|UJSAG|MAGAZIN|SORSJEGY|LOTTO|KAPARO)/],
+  ['food', /(TEJ|KENYER|ZSEMLE|KIFLI|KALACS|CSIGA|BAGETT|POGACSA|SAJT|TURO|VAJ|MARGARIN|JOGHURT|KEFIR|TEJFOL|TEJSZIN|TOJAS|CSIRKE|PULYKA|SERTES|MARHA|DARALT|SONKA|KOLBASZ|SZALAMI|VIRSLI|PARIZSI|HAL\b|TONHAL|LAZAC|ALMA|BANAN|NARANCS|CITROM|SZOLO|KORTE|EPER|DINNYE|BARACK|PARADICSOM|PAPRIKA|UBORKA|BURGONYA|KRUMPLI|HAGYMA|FOKHAGYMA|SALATA|REPA|KAPOSZTA|BROKKOLI|GOMBA|RIZS|TESZTA|SPAGETTI|LISZT|CUKOR|\bSO\b|OLAJ|ECET|KAVE|TEA\b|KAKAO|CSOKI|CSOKOLADE|KEKSZ|OSTYA|CHIPS|ROPI|MOGYORO|DIO|MUZLI|PEHELY|UDITO|COLA|SZORP|GYUMOLCSLE|\bLE\b|VIZ|ASVANYVIZ|SOR\b|BOR\b|PEZSGO|PALINKA|JEGKREM|PIZZA|LEVES|KONZERV|BAB\b|BORSO|KUKORICA|LEKVAR|MEZ\b|KETCHUP|MAJONEZ|MUSTAR|FUSZER|BORS\b|PAPRIKAPOR|ZOLDSEG|GYUMOLCS|PEKARU|SUTEMENY|TORTA|FANK|BUKTA|PITE|REJTO|CROISSANT|SZENDVICS|BABY ?FOOD|BEBIETEL)/],
+];
+
+let itemRules = {};
+export function setItemRules(rules) {
+  itemRules = rules ?? {};
+}
+export const itemRuleKey = (name) => plainUpper(name).replace(/[\d.,%]+\s*(KG|G|L|ML|DB|CL)?\b/g, '').replace(/\s+/g, ' ').trim();
+
+// Category for one receipt line: the user's earlier choice, then product words,
+// then the shop's own category (e.g. everything at DM is Háztartás by default).
+export function suggestItemCategory(name, shopCategory) {
+  const learned = itemRules[itemRuleKey(name)];
+  if (learned) return learned;
+  const p = plainUpper(name);
+  for (const [cat, re] of ITEM_KEYWORDS) if (re.test(p)) return cat;
+  return shopCategory && categoryById(shopCategory).kind === 'expense' ? shopCategory : 'food';
+}
