@@ -5,6 +5,7 @@ import { KINDS, categoryById, categoriesForKind, isTransferKind, suggestForName,
 import { parseReceipt, parsePrice } from './receipt-parser.js';
 import { recentMonths } from './report.js';
 import { supportedBanks } from './banks/index.js';
+import * as sync from './sync.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -838,6 +839,86 @@ function renderHistory() {
   }
 }
 
+// ---------- Közös használat (cloud login and sync) ----------
+
+const timeFmt = new Intl.DateTimeFormat('hu-HU', { hour: '2-digit', minute: '2-digit' });
+
+function renderCloud(status) {
+  const user = sync.currentUser();
+  const loggedIn = Boolean(user) && status.state !== 'off';
+  $('#cloud-login').hidden = loggedIn;
+  $('#cloud-account').hidden = !loggedIn;
+  // While shared, "delete everything" would delete it for both phones; log-out is the safe way.
+  $('#clear-btn').hidden = loggedIn;
+  if (loggedIn) $('#cloud-email').textContent = user.email;
+
+  const texts = {
+    syncing: 'Szinkronizálás…',
+    ok: `✓ Szinkronizálva ${status.at ? timeFmt.format(status.at) : ''}`,
+    offline: `⚠️ ${status.message}`,
+    error: `⚠️ ${status.message}`,
+    off: status.message,
+  };
+  $('#cloud-status').textContent = texts[status.state] ?? '';
+
+  const badge = $('#cloud-badge');
+  badge.hidden = !loggedIn;
+  badge.className = `cloud-badge ${status.state}`;
+  badge.textContent = { syncing: '☁️ …', ok: '☁️ ✓', offline: '☁️ offline', error: '☁️ ⚠️' }[status.state] ?? '☁️';
+  badge.title = texts[status.state] ?? '';
+}
+
+async function sendLoginCode() {
+  const email = $('#login-email').value.trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    toast('Adj meg egy érvényes e-mail-címet.');
+    return;
+  }
+  const button = $('#login-send');
+  button.disabled = true;
+  try {
+    await sync.requestCode(email);
+    $('#login-code-step').hidden = false;
+    $('#login-sent').textContent = `Elküldtük a kódot ide: ${email}. Nézd meg a leveleidet (a Spam mappát is).`;
+    button.textContent = 'Új kód kérése';
+    $('#login-code').focus();
+  } catch (err) {
+    toast(err.message);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function verifyLoginCode() {
+  const code = $('#login-code').value.replace(/\s/g, '');
+  if (!/^\d{6,10}$/.test(code)) {
+    toast('A kód 6–10 számjegyből áll.');
+    return;
+  }
+  const button = $('#login-verify');
+  button.disabled = true;
+  try {
+    await sync.verifyCode($('#login-email').value, code);
+    $('#login-code').value = '';
+    $('#login-code-step').hidden = true;
+    toast('Sikeres belépés ☁️');
+    ui.month = null;
+    renderHistory();
+  } catch (err) {
+    toast(err.message);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function logoutCloud() {
+  if (!confirm('Kijelentkezel? Az adatok törlődnek erről a telefonról, de a felhőben megmaradnak, és újra belépve visszajönnek.')) return;
+  await sync.logout();
+  ui.month = null;
+  toast('Kijelentkeztél');
+  renderHistory();
+}
+
 // ---------- Backup ----------
 
 function downloadBackup() {
@@ -852,7 +933,11 @@ function downloadBackup() {
 }
 
 async function restore(file) {
-  if (!confirm('A visszatöltés lecseréli a jelenlegi adatokat a mentésben lévőkre. Folytatod?')) return;
+  const shared = Boolean(sync.currentUser());
+  const warning = shared
+    ? 'A visszatöltés lecseréli az adatokat a mentésben lévőkre, a felhőben is: mindkét telefonon. Folytatod?'
+    : 'A visszatöltés lecseréli a jelenlegi adatokat a mentésben lévőkre. Folytatod?';
+  if (!confirm(warning)) return;
   try {
     const count = store.restoreBackup(await file.text());
     ui.month = null;
@@ -956,6 +1041,19 @@ $('#pdf-input').addEventListener('change', async (e) => {
 });
 $('#backup-btn').addEventListener('click', downloadBackup);
 $('#card-add-btn').addEventListener('click', addCardByHand);
+$('#login-send').addEventListener('click', sendLoginCode);
+$('#login-verify').addEventListener('click', verifyLoginCode);
+$('#login-code').addEventListener('keydown', (e) => { if (e.key === 'Enter') verifyLoginCode(); });
+$('#cloud-sync').addEventListener('click', () => sync.syncNow());
+$('#cloud-logout').addEventListener('click', logoutCloud);
+sync.onStatus((status) => {
+  renderCloud(status);
+  // Something came from the other phone: redraw what is on screen.
+  if (status.state === 'ok' && status.result?.pulled) {
+    if (currentView() === 'import') renderHistory();
+    else renderCurrent();
+  }
+});
 $('#restore-input').addEventListener('change', async (e) => {
   const [file] = e.target.files;
   e.target.value = '';
@@ -977,3 +1075,4 @@ navigator.storage?.persist?.().catch(() => {});
 $('#supported-banks').textContent = supportedBanks();
 store.ensureRecurring(todayIso());
 showView();
+sync.start();

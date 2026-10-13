@@ -17,6 +17,7 @@
 <body>
   <header class="topbar">
     <h1>Családi Kassza</h1>
+    <a href="#import" id="cloud-badge" class="cloud-badge" hidden aria-live="polite"></a>
   </header>
 
   <main>
@@ -96,6 +97,36 @@
 
     <!-- Importálás -->
     <section id="view-import" class="view" aria-label="Importálás" hidden>
+      <div class="card" id="cloud-card">
+        <h2>☁️ Közös használat</h2>
+
+        <div id="cloud-login">
+          <p class="muted">Lépj be az e-mail-címeddel, és a két telefon ugyanazokat az adatokat látja.
+            Csak az engedélyezett családtagok léphetnek be.</p>
+          <label class="field">
+            E-mail-cím
+            <input type="email" id="login-email" autocomplete="email" inputmode="email" placeholder="nev@gmail.com">
+          </label>
+          <button type="button" id="login-send" class="btn primary">Belépési kód kérése</button>
+          <div id="login-code-step" hidden>
+            <p class="muted small" id="login-sent"></p>
+            <label class="field">
+              A kapott kód
+              <input type="text" id="login-code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456">
+            </label>
+            <button type="button" id="login-verify" class="btn primary">Belépés</button>
+          </div>
+        </div>
+
+        <div id="cloud-account" hidden>
+          <p>Belépve: <strong id="cloud-email"></strong></p>
+          <p class="muted small" id="cloud-status"></p>
+          <button type="button" id="cloud-sync" class="btn">Szinkronizálás most</button>
+          <button type="button" id="cloud-logout" class="btn">Kijelentkezés</button>
+          <p class="muted small">Kijelentkezéskor az adatok törlődnek erről a telefonról, de a felhőben megmaradnak.</p>
+        </div>
+      </div>
+
       <div class="card">
         <h2>Bankszámlakivonat (PDF)</h2>
         <p class="muted">Válaszd ki a PDF kivonatot. Egyszerre többet is választhatsz. A bankot az app magától felismeri, és a már feltöltött tételeket nem veszi fel még egyszer.</p>

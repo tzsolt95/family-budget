@@ -5,7 +5,7 @@
 > és onnan folytathatod a munkát.
 
 **Létrehozva:** 2026. október 12.
-**Állapot:** az 1–5. lépés kész (CIB PDF, kézi bevitel, blokkok, hó végi kimutatás). Következik: 2. fázis (közös használat).
+**Állapot:** az 1. fázis kész. A 2. fázis (közös használat, Supabase) elkészült az appban; a Supabase beállítása folyamatban.
 
 ---
 
@@ -157,6 +157,35 @@ a Claude API kellene, ami külön, használat alapján fizetős szolgáltatás.
 
 ---
 
+## 6/b. 2. fázis: közös használat (Supabase)
+
+**Döntések (2026. 10. 13.):**
+1. **Belépés:** e-mail-cím + a levélben kapott **kód** (jelszó nincs).
+2. **Tárolás:** Supabase, **EU (Frankfurt)** adatközpont. Felhőbe kerül: összegek, boltnevek, kategóriák,
+   a kártyákhoz írt nevek és a kártyák utolsó 4 számjegye. **Nem** kerül fel: PDF-ek, teljes kártya- és számlaszám.
+3. **Offline is működik:** a változások internet nélkül is mentődnek, és később szinkronizálódnak.
+4. **Csak a két e-mail-cím** léphet be (engedélyezési lista az adatbázisban).
+5. **Face ID zár:** most nem.
+
+**Biztonsági rétegek:** 2FA a Supabase fiókon; belépés e-mail-kóddal; engedélyezési lista + az új regisztráció
+kikapcsolása; **Row Level Security** (az adatbázis minden sornál ellenőrzi, hogy a kérdező a háztartás tagja-e);
+a titkos kulcs soha nincs az appban; titkosított kapcsolat (HTTPS). A legfontosabb otthoni teendő:
+**2FA a Gmail-fiókokon**, mert az e-mail a belépés kulcsa.
+
+**Működés:**
+- Az app továbbra is a telefonon tárolja az adatokat, és a háttérben szinkronizál:
+  megnyitáskor, változás után néhány másodperccel, és nyitva tartva percenként.
+- Minden adat külön „rekord” a felhőben, így a két telefon egyszerre is módosíthat különböző dolgokat.
+  Ugyanazon tétel egyidejű módosításánál az utolsó mentés nyer.
+- Törléskor a felhőben egy „törölve” jelzés marad, hogy a másik telefon is értesüljön.
+- **Kijelentkezés:** az adatok törlődnek a telefonról, a felhőben megmaradnak.
+- Belépve a **„Minden adat törlése”** gomb el van rejtve (mindkét telefonról törölne).
+- A fejlécben ☁️ jelzés mutatja az állapotot (✓ szinkronizálva, … folyamatban, offline, ⚠️ hiba).
+
+**Beállítási lépések:** lásd `supabase/README.md`.
+
+---
+
 ## 7. Hogyan kerül fel az iPhone-ra?
 
 1. **Tesztelés:** az app Zsolt Mac-jén fut, az iPhone ugyanazon a Wi-Fi-n nyitja meg.
@@ -208,6 +237,11 @@ Nem kell otthoni szerver, és nem kell az App Store sem.
 | `app/js/banks/index.js` | **A támogatott bankok listája**; a feltöltött PDF-ből felismeri a bankot |
 | `app/js/banks/cib.js` | A CIB PDF kivonat beolvasása és ellenőrzése |
 | `app/js/categories.js` | Kategóriák és a besorolási szabályok (bankkivonat és blokk-tételek) |
+| `app/js/sync.js` | 2. fázis: belépés e-mail-kóddal és szinkronizálás a Supabase-szel |
+| `app/vendor/supabase/` | A Supabase ingyenes kapcsolódó könyvtára (supabase-js 2.117.2) |
+| `supabase/schema.sql` | Az adatbázis és a biztonsági szabályok (egyszer kell lefuttatni) |
+| `supabase/README.md` | A Supabase beállításának lépései (magyarul) |
+| `tools/test-sync.mjs` | Fejlesztői ellenőrzés: két szimulált telefon szinkronizálása (`node tools/test-sync.mjs`) |
 | `app/js/report.js` | A hó végi kimutatás számításai (összesítők, kategóriák, hónapok) |
 | `app/js/receipt-parser.js` | A blokk szövegének beolvasása (bolt, dátum, tételek, végösszeg) |
 | `app/js/store.js` | Adatok mentése a telefonon, biztonsági mentés |
@@ -253,6 +287,8 @@ címre. Átköltözéskor használd a „Biztonsági mentés letöltése” és 
   hibátlanul beolvasva, az egyenlegek centre egyeznek.
 - **2026. 10. 12. – kiegészítés:** kártyák neve (ki fizetett), Revolut feltöltés címke,
   automatikus megtakarítások napi összevonása (szeptemberben 209 sor helyett 153).
+- **2026. 10. 13–14. – 2. fázis (app oldal) kész:** belépés e-mail-kóddal, offline működés és szinkronizálás,
+  adatbázis-séma biztonsági szabályokkal, magyar beállítási útmutató. 16 szimulált szinkron-teszt sikeres.
 - **2026. 10. 13. – Kártyák:** kártya hozzáadása kézzel (utolsó 4 számjegy + név), kézzel felvett kártya törlése;
   a Kártyák rész akkor is látszik, ha még nincs kártya.
 - **2026. 10. 13. – Baba kategória:** új 👶 Baba kategória (boltok, blokk-tételek, kártyakód),
@@ -303,7 +339,7 @@ Utána sorban:
 5. ~~Hó végi grafikonok~~ ✓ kész
 6. ~~Mentés/exportálás~~ ✓ kész (az 1. lépéssel együtt)
 7. ~~Feltöltés tárhelyre~~ ✓ kész, telepítés az iPhone-ra
-8. **2. fázis: Supabase, közös használat a feleséggel** ← következik
+8. **2. fázis: Supabase, közös használat a feleséggel** ← az app kész; Supabase beállítás folyamatban
 9. Később: Revolut kivonatok importálása
 
 ---

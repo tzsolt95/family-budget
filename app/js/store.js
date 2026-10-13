@@ -27,13 +27,18 @@ function load() {
   }
 }
 
+// Listeners are told after every save, e.g. so the cloud sync can upload the change.
+const listeners = new Set();
+export const onChange = (fn) => listeners.add(fn);
+
 function save() {
   try {
     localStorage.setItem(KEY, JSON.stringify(state));
-    return true;
   } catch {
     return false;
   }
+  for (const fn of listeners) fn();
+  return true;
 }
 
 // Runs when the app opens: brings data saved by older app versions up to date.
@@ -42,6 +47,12 @@ function save() {
 //   category) also apply to earlier months. Anything the user sorted is left alone.
 function upgradeStoredData() {
   let changed = false;
+  for (const imp of state.imports) {
+    if (!imp.id) {
+      imp.id = `${imp.importedAt}|${imp.file}`;
+      changed = true;
+    }
+  }
   for (const tx of Object.values(state.transactions)) {
     if (tx.source !== 'bank') continue;
     if (!('hint' in tx) && tx.id.startsWith('cib|')) {
@@ -147,7 +158,8 @@ export function addBankTransactions(list, info) {
     added++;
   }
   const linked = linkPendingManual();
-  state.imports.push({ ...info, count: list.length, added, importedAt: new Date().toISOString() });
+  const importedAt = new Date().toISOString();
+  state.imports.push({ id: `${importedAt}|${info.file}`, ...info, count: list.length, added, importedAt });
   const saved = save();
   return { added, skipped: list.length - added, linked, saved };
 }
@@ -371,7 +383,8 @@ export function ensureRecurring(today) {
     for (const month of monthsBetween(rec.startMonth, today.slice(0, 7))) {
       const date = dateInMonth(month, rec.day);
       if (date > today || existing.has(month) || rec.skipped.includes(month)) continue;
-      const tx = buildManual({ ...rec, date }, newId('man'), rec.id);
+      // Same id on both phones, so a repeat added by each phone is still one item.
+      const tx = buildManual({ ...rec, date }, `man|${rec.id}|${month}`, rec.id);
       state.transactions[tx.id] = tx;
       if (tx.payment === 'card') {
         const bank = findBankMatch(tx);
@@ -392,6 +405,86 @@ export function manualTitles() {
     .filter((t) => t.source === 'manual')
     .sort((a, b) => b.date.localeCompare(a.date))
     .map((t) => t.title))];
+}
+
+// ---------- Records (for the cloud sync) ----------
+//
+// The cloud stores the data as separate records, so two phones can change different
+// things at the same time without overwriting each other. Key: "kind|id".
+
+const RECORD_KINDS = {
+  tx: {
+    list: () => Object.entries(state.transactions),
+    set: (id, data) => { state.transactions[id] = data; },
+    remove: (id) => { delete state.transactions[id]; },
+  },
+  rule: {
+    list: () => Object.entries(state.rules).map(([k, category]) => [k, { category }]),
+    set: (id, data) => { state.rules[id] = data.category; },
+    remove: (id) => { delete state.rules[id]; },
+  },
+  itemRule: {
+    list: () => Object.entries(state.itemRules).map(([k, category]) => [k, { category }]),
+    set: (id, data) => { state.itemRules[id] = data.category; },
+    remove: (id) => { delete state.itemRules[id]; },
+  },
+  cardOwner: {
+    list: () => Object.entries(state.cardOwners).map(([k, name]) => [k, { name }]),
+    set: (id, data) => { state.cardOwners[id] = data.name; },
+    remove: (id) => { delete state.cardOwners[id]; },
+  },
+  manualCard: {
+    list: () => state.manualCards.map((c) => [c, {}]),
+    set: (id) => { if (!state.manualCards.includes(id)) state.manualCards.push(id); },
+    remove: (id) => { state.manualCards = state.manualCards.filter((c) => c !== id); },
+  },
+  recurring: {
+    list: () => Object.entries(state.recurring),
+    set: (id, data) => { state.recurring[id] = data; },
+    remove: (id) => { delete state.recurring[id]; },
+  },
+  import: {
+    list: () => state.imports.map((i) => [i.id, i]),
+    set: (id, data) => {
+      const at = state.imports.findIndex((i) => i.id === id);
+      if (at >= 0) state.imports[at] = data;
+      else state.imports.push(data);
+    },
+    remove: (id) => { state.imports = state.imports.filter((i) => i.id !== id); },
+  },
+};
+
+// All data as { "kind|id": data }.
+export function records() {
+  const out = {};
+  for (const [kind, k] of Object.entries(RECORD_KINDS)) {
+    for (const [id, data] of k.list()) out[`${kind}|${id}`] = data;
+  }
+  return out;
+}
+
+// Applies changes that came from the cloud: [{ kind, id, data, deleted }].
+export function applyRecords(changes) {
+  for (const { kind, id, data, deleted } of changes) {
+    const k = RECORD_KINDS[kind];
+    if (!k) continue;
+    if (deleted) k.remove(id);
+    else k.set(id, data);
+  }
+  state.imports.sort((a, b) => a.importedAt.localeCompare(b.importedAt));
+  applyRules();
+  save();
+}
+
+// Empties this phone only (used at log-out); the cloud copy is not touched.
+export function clearLocal() {
+  state = emptyState();
+  applyRules();
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+  } catch {
+    // Nothing else to do: the data is gone from memory anyway.
+  }
 }
 
 // ---------- Backup ----------
